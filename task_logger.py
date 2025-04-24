@@ -14,12 +14,12 @@ import webbrowser
 import sys
 import markdown
 # At the top of your task_logger.py file, after imports
-VERSION = "1.0.0"  # Initial version
+VERSION = "1.0.1"  # Initial version
 
 # Constants
 CSV_FILE = "task_log.csv"
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".task_logger")
-DEFAULT_WINDOW_SIZE = "600x680"
+DEFAULT_WINDOW_SIZE = "400x800"
 
 # Colors
 COLORS = {
@@ -137,12 +137,16 @@ class TaskLogger:
     
     def setup_ui(self):
         """Set up the user interface"""
-        # Configure the root window
+        # Configure the root window to use grid
         self.root.configure(bg=COLORS["background"])
+        
+        # Configure grid weights to make content area expandable
+        self.root.grid_columnconfigure(0, weight=1)  # Makes column expandable
+        self.root.grid_rowconfigure(1, weight=1)     # Makes content row expandable
         
         # Create a header frame
         header_frame = tk.Frame(self.root, bg=COLORS["primary"], padx=10, pady=10)
-        header_frame.pack(fill="x")
+        header_frame.grid(row=0, column=0, sticky="ew")  # Stick to east-west
         
         # App title
         title_label = tk.Label(
@@ -171,10 +175,11 @@ class TaskLogger:
         )
         always_on_top_checkbox.pack(side="right")
         
-        # Main content
+        # Main content area - will expand/contract with window
         content_frame = tk.Frame(self.root, bg=COLORS["background"], padx=15, pady=15)
-        content_frame.pack(fill="both", expand=True)
+        content_frame.grid(row=1, column=0, sticky="nsew")  # nsew = fill in all directions
         
+        # Rest of your content setup remains the same, using pack within content_frame
         # Action buttons section
         actions_frame = tk.LabelFrame(
             content_frame, 
@@ -330,12 +335,11 @@ class TaskLogger:
         self.history_text.pack(fill="both", expand=True)
         scrollbar.config(command=self.history_text.yview)
         
-        # Add status bar at the bottom
+        # Add status bar at the bottom using grid
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
-        status_frame.pack(fill="x", side="bottom")
+        status_frame.grid(row=2, column=0, sticky="ew")  # Stick to east-west
         
-        # In your setup_ui method, modify the status_label creation:
-        status_text = f"Task Logger v{VERSION} • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
+        status_text = f"Task Logger v2.0 • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
         status_label = tk.Label(
             status_frame, 
             text=status_text, 
@@ -343,7 +347,6 @@ class TaskLogger:
             bg=COLORS["sidebar"],
             font=("Arial", 8)
         )
-        status_label.pack(side="left")
         status_label.pack(side="left")
         
         # Add a refresh button to the status bar
@@ -367,7 +370,13 @@ class TaskLogger:
         self.history_text.tag_configure("active", foreground=COLORS["primary"])
         self.history_text.tag_configure("timestamp", foreground=COLORS["light_text"], font=(history_font[0], history_font[1], "italic"))
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
-    
+        
+        # Set minimum window size to ensure all elements are visible
+        self.root.update_idletasks()
+        min_width = 500
+        min_height = 350  # Reduced minimum height
+        self.root.minsize(min_width, min_height)
+
     def toggle_always_on_top(self):
         """Toggle always-on-top state"""
         self.root.attributes("-topmost", self.always_on_top_var.get())
