@@ -13,6 +13,8 @@ import uuid
 import webbrowser
 import sys
 import markdown
+# At the top of your task_logger.py file, after imports
+VERSION = "1.0.0"  # Initial version
 
 # Constants
 CSV_FILE = "task_log.csv"
@@ -332,7 +334,8 @@ class TaskLogger:
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
         status_frame.pack(fill="x", side="bottom")
         
-        status_text = f"Task Logger v2.0 • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
+        # In your setup_ui method, modify the status_label creation:
+        status_text = f"Task Logger v{VERSION} • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
         status_label = tk.Label(
             status_frame, 
             text=status_text, 
@@ -340,6 +343,7 @@ class TaskLogger:
             bg=COLORS["sidebar"],
             font=("Arial", 8)
         )
+        status_label.pack(side="left")
         status_label.pack(side="left")
         
         # Add a refresh button to the status bar
