@@ -13,7 +13,7 @@ import uuid
 import webbrowser
 import sys
 import markdown
-# At the top of your task_logger.py file, after imports
+
 VERSION = "1.0.1"  # Initial version
 
 # Constants
@@ -339,7 +339,7 @@ class TaskLogger:
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
         status_frame.grid(row=2, column=0, sticky="ew")  # Stick to east-west
         
-        status_text = f"Task Logger v2.0 • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
+        status_text = f"Task Logger {VERSION} • Last updated: {datetime.now().strftime('%Y-%m-%d')}"
         status_label = tk.Label(
             status_frame, 
             text=status_text, 
