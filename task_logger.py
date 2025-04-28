@@ -14,7 +14,7 @@ import webbrowser
 import sys
 import markdown
 
-VERSION = "1.0.1"  # Initial version
+VERSION = "1.0.2"  # Initial version
 
 # Constants
 CSV_FILE = "task_log.csv"
