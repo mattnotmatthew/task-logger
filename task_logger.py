@@ -1,8 +1,3 @@
-"""
-Task Logger - A Python application for logging and tracking tasks
-Version: 2.0
-Author: Matt Oriente (optimized and styled by Claude)
-"""
 
 import tkinter as tk
 from tkinter import simpledialog, messagebox, ttk
@@ -14,7 +9,7 @@ import webbrowser
 import sys
 import markdown
 
-VERSION = "1.0.2"  # Initial version
+VERSION = "1.2.0" 
 
 # Constants
 CSV_FILE = "task_log.csv"
@@ -62,6 +57,9 @@ class TaskLogger:
         
         # Apply always on top setting
         self.toggle_always_on_top()
+
+        # Initialize filter state variable
+        self.current_filter = "all"  # Default to showing all tasks
         
         # Refresh history on load
         self.refresh_history()
@@ -197,7 +195,6 @@ class TaskLogger:
         button_frame.pack(fill="x")
         button_frame.grid_columnconfigure(0, weight=1)
         button_frame.grid_columnconfigure(1, weight=1)
-        button_frame.grid_columnconfigure(2, weight=1)
         
         # Task action buttons
         start_button = tk.Button(
@@ -213,20 +210,7 @@ class TaskLogger:
             pady=5
         )
         start_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        
-        stop_button = tk.Button(
-            button_frame, 
-            text="Stop Task", 
-            command=self.stop_task, 
-            bg=COLORS["warning"],
-            fg=COLORS["text"],
-            font=("Arial", 10, "bold"),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        stop_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+    
         
         finish_button = tk.Button(
             button_frame, 
@@ -240,7 +224,7 @@ class TaskLogger:
             padx=10,
             pady=5
         )
-        finish_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+        finish_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         
         # Export actions section
         export_frame = tk.LabelFrame(
@@ -364,6 +348,70 @@ class TaskLogger:
         )
         refresh_button.pack(side="right")
         
+        # Task Filter section
+        filter_frame = tk.LabelFrame(
+            content_frame,
+            text="Filter Tasks",
+            bg=COLORS["background"],
+            fg=COLORS["text"],
+            font=("Arial", 11, "bold"),
+            padx=10,
+            pady=10
+        )
+        filter_frame.pack(fill="x", pady=(0, 15))
+
+        # Filter buttons
+        filter_button_frame = tk.Frame(filter_frame, bg=COLORS["background"])
+        filter_button_frame.pack(fill="x")
+        filter_button_frame.grid_columnconfigure(0, weight=1)
+        filter_button_frame.grid_columnconfigure(1, weight=1)
+        filter_button_frame.grid_columnconfigure(2, weight=1)
+
+        # All tasks button
+        self.all_button = tk.Button(
+            filter_button_frame,
+            text="All Tasks",
+            command=lambda: self.filter_tasks("all"),
+            bg=COLORS["primary"],  # Start with this one active
+            fg=COLORS["background"],
+            font=("Arial", 10),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.all_button.grid(row=0, column=0, padx=2, pady=5, sticky="ew")
+
+        # Active tasks button
+        self.active_button = tk.Button(
+            filter_button_frame,
+            text="Active Tasks",
+            command=lambda: self.filter_tasks("active"),
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.active_button.grid(row=0, column=1, padx=2, pady=5, sticky="ew")
+
+        # Finished tasks button
+        self.finished_button = tk.Button(
+            filter_button_frame,
+            text="Finished Tasks",
+            command=lambda: self.filter_tasks("finished"),
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.finished_button.grid(row=0, column=2, padx=2, pady=5, sticky="ew")
+
         # Configure text tags for colored text in history
         self.history_text.tag_configure("completed", foreground=COLORS["success"])
         self.history_text.tag_configure("stopped", foreground=COLORS["warning"])
@@ -374,66 +422,81 @@ class TaskLogger:
         # Set minimum window size to ensure all elements are visible
         self.root.update_idletasks()
         min_width = 500
-        min_height = 350  # Reduced minimum height
+        min_height = 1000  # Reduced minimum height
         self.root.minsize(min_width, min_height)
 
     def toggle_always_on_top(self):
         """Toggle always-on-top state"""
         self.root.attributes("-topmost", self.always_on_top_var.get())
-    
+
+    def filter_tasks(self, filter_type):
+        """Filter tasks by status: all, active, or finished"""
+        # Set current filter
+        self.current_filter = filter_type
+        
+        # Update button appearances based on active filter
+        self.all_button.config(
+            bg=COLORS["primary"] if filter_type == "all" else COLORS["secondary"],
+            fg=COLORS["background"] if filter_type == "all" else COLORS["text"]
+        )
+        
+        self.active_button.config(
+            bg=COLORS["primary"] if filter_type == "active" else COLORS["secondary"],
+            fg=COLORS["background"] if filter_type == "active" else COLORS["text"]
+        )
+        
+        self.finished_button.config(
+            bg=COLORS["primary"] if filter_type == "finished" else COLORS["secondary"],
+            fg=COLORS["background"] if filter_type == "finished" else COLORS["text"]
+        )
+        
+        # Refresh the task history with filtered results
+        self.refresh_history()
+
+
     def refresh_history(self):
         """Refresh the task history display"""
         self.history_text.config(state="normal")
         self.history_text.delete(1.0, tk.END)
         
         try:
-           # Convert datetime columns and sort
+            # Convert datetime columns and sort
             sorted_df = self.df.copy()
-            
-            # Make sure we're correctly parsing all date formats
-            # sorted_df["Start Time"] = pd.to_datetime(sorted_df["Start Time"], errors='coerce')
-            # sorted_df["Stop Time"] = pd.to_datetime(sorted_df["Stop Time"], errors='coerce')
-            
-            # # Debug the timestamp parsing
-            # for idx, row in sorted_df.iterrows():
-            #     print(f"Task: {row['Task Description']}")
-            #     print(f"  Original Start: {self.df.loc[idx, 'Start Time']}")
-            #     print(f"  Parsed Start: {row['Start Time']}")
-            
-            # Create Last Activity column
-            # For active tasks, we'll use the current time if they don't have a stop time
-            # This ensures active tasks appear at the top
-            current_time = pd.Timestamp.now()
-            
-          
+
+            # Parse dates
             sorted_df["Start Time"] = pd.to_datetime(sorted_df["Start Time"], errors='coerce')
             sorted_df["Stop Time"] = pd.to_datetime(sorted_df["Stop Time"], errors='coerce')
 
-            sorted_df["Last Activity"] = sorted_df[["Stop Time","Start Time"]].max(axis=1)
-            
-            sorted_df = sorted_df.sort_values(by="Last Activity",ascending=False)
-            # print (f"Sort df value {sorted_df}")
-            # Sort by Last Activity in descending order (newest first)
+            # Determine the last activity time (either Stop Time or Start Time)
+            sorted_df["Last Activity"] = sorted_df[["Start Time", "Stop Time"]].max(axis=1)
+
+            # Sort by Last Activity in descending order
             sorted_df = sorted_df.sort_values(by="Last Activity", ascending=False)
-            
-            # Count active tasks
-            active_count = len(sorted_df[sorted_df["Active"] == 1])
-            if active_count > 0:
-                self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
-                
-            
+
+            # Apply current filter
+            if self.current_filter == "active":
+                sorted_df = sorted_df[sorted_df["Active"] == 1]
+                self.history_text.insert(tk.END, "Showing active tasks only\n\n", "active")
+            elif self.current_filter == "finished":
+                sorted_df = sorted_df[sorted_df["Active"] == 0]
+                self.history_text.insert(tk.END, "Showing finished tasks only\n\n", "completed")
+            else:
+                # If showing all tasks, add a summary of active tasks
+                active_count = len(sorted_df[sorted_df["Active"] == 1])
+                if active_count > 0:
+                    self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
+
             # Display recent tasks
             for _, row in sorted_df.head(25).iterrows():
                 desc = row["Task Description"]
                 start_time = row["Start Time"]
                 stop_time = row["Stop Time"]
                 hasStopTime = pd.notna(stop_time)
-                active = row["Active"] == 1
-                completed = row["Completed"] == "Yes"
+                active = row["Active"] == 0
                 duration = f"{row['Duration (min)']} min" if pd.notna(row["Duration (min)"]) else "-"
                 note = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
                 note_snippet = (note[:100] + "...") if len(note) > 100 else note
-                
+
                 # Format the timestamp safely
                 def format_timestamp(ts):
                     if pd.notna(ts):
@@ -442,55 +505,29 @@ class TaskLogger:
                         except (AttributeError, ValueError):
                             return "Invalid timestamp"
                     return "No timestamp"
-                
-                # print(f"{desc} : {hasStopTime}")
-                # # Debug timestamp parsing more thoroughly
-                # for idx, row in sorted_df.iterrows():
-                #     print(f"Task: {row['Task Description']}")
-                #     print(f"  Original Start: {self.df.loc[idx, 'Start Time']}")
-                #     print(f"  Parsed Start: {row['Start Time']}")
-                #     print(f"  Original Stop: {self.df.loc[idx, 'Stop Time']}")
-                #     print(f"  Parsed Stop: {row['Stop Time']}")
-                #     print(f"  Active: {row['Active']}")
-                #     print(f"  Completed: {row['Completed']}")
 
-                # In your display logic, modify your condition logic:
-                if completed:
-                    # Completed takes priority over everything else
+                if active:
                     icon = "✅"
                     timestamp = format_timestamp(stop_time)
                     status = "Completed"
                     tag = "completed"
-                elif hasStopTime:
-                    # If it has a stop time, show as Stopped, regardless of Active value
-                    icon = "⏹️"
-                    timestamp = format_timestamp(stop_time)
-                    status = "Stopped"
-                    tag = "stopped"
                 else:
-                    # No stop time - must be in progress
-                    icon = "🟡"
+                    icon = "▶️"
                     timestamp = format_timestamp(start_time)
                     status = "In Progress"
                     tag = "active"
-                
-                # Insert the icon and task description with appropriate tag
+
                 self.history_text.insert(tk.END, f"{icon} ", tag)
                 self.history_text.insert(tk.END, f"{desc}\n", tag)
-                
-                # Insert status and timestamp
                 self.history_text.insert(tk.END, f"   {status} • ", tag)
                 self.history_text.insert(tk.END, f"{timestamp}", "timestamp")
-                
-                # Insert duration if available
+
                 if duration != "-":
                     self.history_text.insert(tk.END, f" • Duration: {duration}", "timestamp")
-                
-                # Insert note if available
+
                 if note_snippet:
                     self.history_text.insert(tk.END, f"\n   Note: {note_snippet}", "note")
-                
-                # Add separator
+
                 self.history_text.insert(tk.END, "\n\n")
                 
         except Exception as e:
@@ -503,7 +540,7 @@ class TaskLogger:
     def get_active_tasks(self):
         """Get list of currently active tasks"""
         # Filter for tasks where Active = 1 AND Completed = "No"
-        active = self.df[(self.df["Active"] == 1) & (self.df["Completed"] == "No")]
+        active = self.df[(self.df["Active"] == 1)]
         return sorted(active["Task Description"].unique())
         
     def get_inactive_tasks(self):
@@ -964,7 +1001,7 @@ class TaskLogger:
     def generate_markdown_content(self, days=7):
         """Generate markdown content for reports"""
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=7)
         
         temp_df = self.df.copy()
         temp_df["Start Time"] = pd.to_datetime(temp_df["Start Time"], errors='coerce')
@@ -974,12 +1011,12 @@ class TaskLogger:
         recent = recent.sort_values(by="Start Time")
         
         # Create completed and in-progress task dataframes
-        completed_tasks = recent[recent["Completed"] == "Yes"]
-        pending_tasks = recent[recent["Completed"] != "Yes"]
+        completed_tasks = recent[recent["Active"] == 0]
+        pending_tasks = recent[recent["Active"] != 1]
         
         export_date = datetime.now().strftime("%Y-%m-%d")
         lines = ["# 📋 5-15\n"]
-        lines.append("### Name: Matt Oriente")
+        lines.append("### Name: [InsertName]")
         lines.append(f"### Week Ending: {export_date}\n")
         
         # Accomplishments section
