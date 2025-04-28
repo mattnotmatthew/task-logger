@@ -9,7 +9,7 @@ import webbrowser
 import sys
 import markdown
 
-VERSION = "1.2.0" 
+VERSION = "1.3.0" 
 
 # Constants
 CSV_FILE = "task_log.csv"
@@ -518,15 +518,9 @@ class TaskLogger:
                     tag = "active"
 
                 self.history_text.insert(tk.END, f"{icon} ", tag)
-                self.history_text.insert(tk.END, f"{desc}\n", tag)
-                self.history_text.insert(tk.END, f"   {status} • ", tag)
-                self.history_text.insert(tk.END, f"{timestamp}", "timestamp")
-
-                if duration != "-":
-                    self.history_text.insert(tk.END, f" • Duration: {duration}", "timestamp")
-
-                if note_snippet:
-                    self.history_text.insert(tk.END, f"\n   Note: {note_snippet}", "note")
+                self.history_text.insert(tk.END, f"{timestamp}: ", "timestamp")
+                self.history_text.insert(tk.END, f"- {status} - ", tag)
+                self.history_text.insert(tk.END, f"{desc}", tag)
 
                 self.history_text.insert(tk.END, "\n\n")
                 
