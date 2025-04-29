@@ -2,6 +2,20 @@
 *.html
 *.csv
 *.bak
+task_logger.py
+
+# Generated reports
+*_weekly_summary.md
+
+# Temporary preview files
+temp_preview_*.html
+
+# Archive files
+task_logger_*.zip
+
+# Generated data in subdirectories
+models/*.csv
+models/*.bak
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

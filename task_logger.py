@@ -14,7 +14,7 @@ VERSION = "1.3.0"
 # Constants
 CSV_FILE = "task_log.csv"
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".task_logger")
-DEFAULT_WINDOW_SIZE = "400x800"
+DEFAULT_WINDOW_SIZE = "500x800"
 
 # Colors
 COLORS = {
@@ -1123,7 +1123,8 @@ class TaskLogger:
             md_content = self.generate_markdown_content()
             
             date_str = datetime.now().strftime("%Y-%m-%d")
-            output_path = f"{date_str}_weekly_summary.md"
+            output_path = f"exports/{date_str}_weekly_summary.md"
+
             
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(md_content)
