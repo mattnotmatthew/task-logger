@@ -194,7 +194,7 @@ class MainView:
 
         bulk_action_button = tk.Button(
             button_frame, 
-            text="Bulk Action", 
+            text="View Active Tasks", 
             command=self._show_bulk_action_window, 
             bg=COLORS["warning"],
             fg=COLORS["text"], 
@@ -525,19 +525,21 @@ class MainView:
             tk.Label(content, text="No active tasks available.", font=("Arial", 10), bg=COLORS["background"], fg=COLORS["text"]).pack(pady=20)
             return
 
-        # Create a listbox with checkboxes
-        task_vars = {}
+        # Create a listbox for active tasks
+        task_listbox = tk.Listbox(content, selectmode=tk.MULTIPLE, bg=COLORS["background"], fg=COLORS["text"], font=("Arial", 10))
+        task_listbox.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Populate the listbox with active tasks
         for task in active_tasks:
-            var = tk.BooleanVar()
-            task_vars[task] = var
-            tk.Checkbutton(content, text=task, variable=var, bg=COLORS["background"], fg=COLORS["text"], anchor="w").pack(fill="x", padx=10, pady=5)
+            task_listbox.insert(tk.END, task)
 
         def close_selected_tasks():
-            selected_tasks = [task for task, var in task_vars.items() if var.get()]
-            if not selected_tasks:
+            selected_indices = task_listbox.curselection()
+            if not selected_indices:
                 messagebox.showwarning("No Selection", "Please select at least one task.")
                 return
 
+            selected_tasks = [task_listbox.get(i) for i in selected_indices]
             for task in selected_tasks:
                 note = simpledialog.askstring("Closing Note", f"Add a note for task: {task}")
                 self.task_controller.finish_task(task, note or "")
@@ -576,11 +578,29 @@ class MainView:
         try:
             index = self.history_text.index("@%s,%s linestart" % (event.x, event.y))
             line_content = self.history_text.get(index, "%s lineend" % index)
-            task_description = line_content.split("-", 1)[-1].strip()
+          ##  messagebox.showinfo("Task DescriptionBEFORE", f"Task: {line_content}") ##remove
+            task_description = line_content.rsplit("-", 1)[-1].strip()
+            ## messagebox.showinfo("Task DescriptionAFTER", f"Task: {task_description}") ##remove
 
             notes = self.task_controller.get_task_notes(task_description)
 
             dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 400, 300)
-            tk.Text(content, wrap="word", state="normal", bg=COLORS["background"], fg=COLORS["text"], font=("Arial", 10), relief=tk.SUNKEN, borderwidth=2, padx=5, pady=5).insert("1.0", notes).pack(fill="both", expand=True)
+
+            # Create the text widget
+            notes_text = tk.Text(
+                content,
+                wrap="word",
+                state="normal",
+                bg=COLORS["background"],
+                fg=COLORS["text"],
+                font=("Arial", 10),
+                relief=tk.SUNKEN,
+                borderwidth=2,
+                padx=5,
+                pady=5
+            )
+            notes_text.insert("1.0", notes)
+            notes_text.config(state="disabled")  # Make the text read-only
+            notes_text.pack(fill="both", expand=True)
         except Exception as e:
             messagebox.showerror("Error", f"Could not fetch notes: {str(e)}")

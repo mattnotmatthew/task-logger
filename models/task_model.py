@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 from datetime import datetime
+from tkinter import ttk, messagebox, simpledialog
 
 class TaskModel:
     """
@@ -87,6 +88,7 @@ class TaskModel:
             filtered_df = filtered_df[filtered_df["Completed"] == ("Yes" if completed else "No")]
             
         if task_description is not None:
+           ## messagebox.showinfo("Task Description", f"Filtering by task description: {task_description}")##remmove
             filtered_df = filtered_df[filtered_df["Task Description"] == task_description]
             
         return filtered_df
