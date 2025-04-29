@@ -548,7 +548,71 @@ class MainView:
             dialog.destroy()
             self.refresh_history()
 
-        tk.Button(content, text="Close All Selected Tasks", command=close_selected_tasks, bg=COLORS["danger"], fg=COLORS["background"], font=("Arial", 10, "bold"), padx=10, pady=5).pack(pady=20)
+        def add_notes_to_selected_tasks():
+            selected_indices = task_listbox.curselection()
+            if not selected_indices:
+                messagebox.showwarning("No Selection", "Please select at least one task.")
+                return
+
+            selected_tasks = [task_listbox.get(i) for i in selected_indices]
+            for task in selected_tasks:
+                note = simpledialog.askstring("Add Note", f"Enter a note for task: {task}")
+                if note:
+                    task_indices = self.task_controller.model.get_tasks(task_description=task).index
+                    for idx in task_indices:
+                        self.task_controller.model.add_notes(idx, note)
+
+            messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
+            self.refresh_history()
+
+        # Button frame
+        button_frame = tk.Frame(content, bg=COLORS["background"])
+        button_frame.pack(fill="x", pady=(15, 0))
+
+        # Cancel button
+        cancel_button = tk.Button(
+            button_frame,
+            text="Cancel",
+            command=dialog.destroy,
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        cancel_button.pack(side="left", padx=5)
+
+        # Add Notes button
+        add_notes_button = tk.Button(
+            button_frame,
+            text="Add Notes",
+            command=add_notes_to_selected_tasks,
+            bg=COLORS["primary"],
+            fg=COLORS["background"],
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        add_notes_button.pack(side="left", padx=5)
+
+        # Close All Selected Tasks button
+        close_button = tk.Button(
+            button_frame,
+            text="Close All Selected Tasks",
+            command=close_selected_tasks,
+            bg=COLORS["danger"],
+            fg=COLORS["background"],
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        close_button.pack(side="right", padx=5)
     
     # Report methods
     def _preview_report(self):
