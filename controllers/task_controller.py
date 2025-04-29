@@ -173,3 +173,12 @@ class TaskController:
                 self.model.add_notes(idx, notes)
                 
         return True, f"Marked '{task_description}' as completed."
+    
+    def get_task_notes(self, task_description):
+        """Fetch all notes for a given task description."""
+        tasks = self.model.get_tasks(task_description=task_description)
+        if tasks.empty:
+            return "No notes available."
+
+        notes = tasks["Notes"].dropna().tolist()
+        return "\n".join(note.replace("|", "\n") for note in notes)

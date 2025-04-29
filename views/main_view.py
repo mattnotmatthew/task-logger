@@ -1,7 +1,7 @@
 # views/main_view.py
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import pandas as pd
 
@@ -191,6 +191,20 @@ class MainView:
             pady=5
         )
         finish_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        bulk_action_button = tk.Button(
+            button_frame, 
+            text="Bulk Action", 
+            command=self._show_bulk_action_window, 
+            bg=COLORS["warning"],
+            fg=COLORS["text"], 
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        bulk_action_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
     
     def _create_export_section(self, parent):
         """Create the export/reporting section"""
@@ -358,7 +372,9 @@ class MainView:
         self.history_text.tag_configure("active", foreground=COLORS["primary"])
         self.history_text.tag_configure("timestamp", foreground=COLORS["light_text"], font=(history_font[0], history_font[1], "italic"))
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
-    
+
+        self.history_text.bind("<Double-1>", self._show_task_notes)
+
     def _create_status_bar(self):
         """Create the status bar at the bottom of the window"""
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
@@ -497,6 +513,40 @@ class MainView:
     def _show_finish_task_dialog(self):
         """Show dialog to finish a task"""
         self.dialog_factory.create_finish_task_dialog(self.refresh_history)
+
+    def _show_bulk_action_window(self):
+        """Open a new window to manage active tasks."""
+        dialog, content = self.dialog_factory.create_dialog("Bulk Action", 500, 400)
+
+        # Fetch active tasks
+        active_tasks = self.task_controller.get_active_tasks()
+
+        if not active_tasks:
+            tk.Label(content, text="No active tasks available.", font=("Arial", 10), bg=COLORS["background"], fg=COLORS["text"]).pack(pady=20)
+            return
+
+        # Create a listbox with checkboxes
+        task_vars = {}
+        for task in active_tasks:
+            var = tk.BooleanVar()
+            task_vars[task] = var
+            tk.Checkbutton(content, text=task, variable=var, bg=COLORS["background"], fg=COLORS["text"], anchor="w").pack(fill="x", padx=10, pady=5)
+
+        def close_selected_tasks():
+            selected_tasks = [task for task, var in task_vars.items() if var.get()]
+            if not selected_tasks:
+                messagebox.showwarning("No Selection", "Please select at least one task.")
+                return
+
+            for task in selected_tasks:
+                note = simpledialog.askstring("Closing Note", f"Add a note for task: {task}")
+                self.task_controller.finish_task(task, note or "")
+
+            messagebox.showinfo("Success", "Selected tasks have been closed.")
+            dialog.destroy()
+            self.refresh_history()
+
+        tk.Button(content, text="Close All Selected Tasks", command=close_selected_tasks, bg=COLORS["danger"], fg=COLORS["background"], font=("Arial", 10, "bold"), padx=10, pady=5).pack(pady=20)
     
     # Report methods
     def _preview_report(self):
@@ -520,3 +570,17 @@ class MainView:
             messagebox.showinfo("Summary Created", f"Weekly summary saved to {result}")
         else:
             messagebox.showerror("Summary Error", result)
+
+    def _show_task_notes(self, event):
+        """Display all notes for the double-clicked task."""
+        try:
+            index = self.history_text.index("@%s,%s linestart" % (event.x, event.y))
+            line_content = self.history_text.get(index, "%s lineend" % index)
+            task_description = line_content.split("-", 1)[-1].strip()
+
+            notes = self.task_controller.get_task_notes(task_description)
+
+            dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 400, 300)
+            tk.Text(content, wrap="word", state="normal", bg=COLORS["background"], fg=COLORS["text"], font=("Arial", 10), relief=tk.SUNKEN, borderwidth=2, padx=5, pady=5).insert("1.0", notes).pack(fill="both", expand=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not fetch notes: {str(e)}")
