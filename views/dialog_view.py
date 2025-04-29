@@ -80,15 +80,17 @@ class TaskDialogFactory:
             callback: Function to call after successful task creation
         """
         # Get inactive tasks for the dropdown
-        inactive_tasks = self.task_controller.get_inactive_tasks()
+       ## inactive_tasks = self.task_controller.get_inactive_tasks() ## removed stop task functionality so no need to restart.
         
         # Create dialog
-        dialog, content = self.create_dialog("Start Task", 380, 250)
+        dialog, content = self.create_dialog("Start Task")
+        dialog.update_idletasks()  # Update geometry calculations
+        dialog.geometry("")  # Let tkinter auto-size the dialog based on its content
         
         # Build form
         tk.Label(
             content, 
-            text="Choose or enter task:",
+            text="Enter new task:",
             font=("Arial", 10, "bold"),
             bg=COLORS["background"],
             fg=COLORS["text"]
@@ -96,37 +98,30 @@ class TaskDialogFactory:
         
         task_var = tk.StringVar()
         
-        # Task dropdown frame
-        dropdown_frame = tk.Frame(content, bg=COLORS["background"])
-        dropdown_frame.pack(fill="x", pady=5)
+        # # Task dropdown frame
+        # dropdown_frame = tk.Frame(content, bg=COLORS["background"])
+        # dropdown_frame.pack(fill="x", pady=5)
         
         # Handle empty task list by setting default empty string
-        if inactive_tasks:
-            task_var.set(inactive_tasks[0])
-            task_menu = ttk.Combobox(
-                dropdown_frame, 
-                textvariable=task_var, 
-                values=inactive_tasks,
-                width=45
-            )
-            task_menu.pack(fill="x", padx=5)
-        else:
-            task_var.set("")
-            task_menu = ttk.Combobox(
-                dropdown_frame, 
-                textvariable=task_var,
-                width=45
-            )
-            task_menu.pack(fill="x", padx=5)
-        
-        tk.Label(
-            content, 
-            text="Or type a new task name:",
-            font=("Arial", 10),
-            bg=COLORS["background"],
-            fg=COLORS["text"]
-        ).pack(anchor="w", pady=(10, 5))
-        
+        ## Removing logic as part of Issue #20
+        # if inactive_tasks:
+        #     task_var.set(inactive_tasks[0])
+        #     task_menu = ttk.Combobox(
+        #         dropdown_frame, 
+        #         textvariable=task_var, 
+        #         values=inactive_tasks,
+        #         width=45
+        #     )
+        #     task_menu.pack(fill="x", padx=5)
+        # else:
+        #     task_var.set("")
+        #     task_menu = ttk.Combobox(
+        #         dropdown_frame, 
+        #         textvariable=task_var,
+        #         width=45
+        #     )
+        #     task_menu.pack(fill="x", padx=5)
+              
         task_entry = tk.Entry(
             content, 
             textvariable=task_var, 
@@ -139,29 +134,26 @@ class TaskDialogFactory:
         
         tk.Label(
             content, 
-            text="Optional Notes:",
+            text="Notes:",
             font=("Arial", 10),
             bg=COLORS["background"],
             fg=COLORS["text"]
         ).pack(anchor="w", pady=(10, 5))
         
-        note_entry = tk.Entry(
+        note_entry = tk.Text(
             content, 
             width=45,
+            height=5,  # Set height for multiline input
             font=("Arial", 10),
             bd=2,
             relief=tk.GROOVE
         )
         note_entry.pack(fill="x", pady=5)
-        
-        # Button frame
-        button_frame = tk.Frame(content, bg=COLORS["background"])
-        button_frame.pack(fill="x", pady=(15, 0))
-        
+
         def on_submit():
             """Handle task submission"""
             selected_task = task_var.get().strip()
-            note = note_entry.get().strip()
+            note = note_entry.get("1.0", tk.END).strip()  # Get multiline text
             
             success, message = self.task_controller.start_task(selected_task, note)
             
@@ -172,6 +164,10 @@ class TaskDialogFactory:
                     callback()
             else:
                 messagebox.showwarning("Warning", message)
+        
+        # Button frame
+        button_frame = tk.Frame(content, bg=COLORS["background"])
+        button_frame.pack(fill="x", pady=(15, 0))
         
         # Create the buttons
         cancel_button = tk.Button(
