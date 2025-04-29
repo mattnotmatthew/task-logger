@@ -3,6 +3,7 @@
 *.csv
 *.bak
 task_logger.py
+build_exe.py
 
 # Generated reports
 *_weekly_summary.md
