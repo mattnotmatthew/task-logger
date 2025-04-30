@@ -99,8 +99,6 @@ class MainView:
         
         # Add components to content frame
         self._create_actions_section(content_frame)
-        self._create_export_section(content_frame)
-        self._create_filter_section(content_frame)
         self._create_history_section(content_frame)
         
         # Add status bar at the bottom
@@ -109,7 +107,7 @@ class MainView:
         # Set minimum window size to ensure all elements are visible
         self.root.update_idletasks()
         min_width = 500
-        min_height = 1000  # Reduced minimum height
+        min_height = 500  # Reduced minimum height
         self.root.minsize(min_width, min_height)
     
     def _create_header_frame(self):
@@ -168,7 +166,7 @@ class MainView:
             button_frame, 
             text="Start Task", 
             command=self._show_start_task_dialog, 
-            bg=COLORS["success"],
+            bg=COLORS["primary"],
             fg=COLORS["background"],
             font=("Arial", 10, "bold"),
             relief=tk.RAISED,
@@ -196,8 +194,8 @@ class MainView:
             button_frame, 
             text="View Active Tasks", 
             command=self._show_bulk_action_window, 
-            bg=COLORS["warning"],
-            fg=COLORS["text"], 
+            bg=COLORS["primary"],
+            fg=COLORS["background"], 
             font=("Arial", 10, "bold"),
             relief=tk.RAISED,
             borderwidth=2,
@@ -205,129 +203,21 @@ class MainView:
             pady=5
         )
         bulk_action_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-    
-    def _create_export_section(self, parent):
-        """Create the export/reporting section"""
-        export_frame = tk.LabelFrame(
-            parent, 
-            text="Reporting", 
-            bg=COLORS["background"],
-            fg=COLORS["text"],
-            font=("Arial", 11, "bold"),
-            padx=10, 
-            pady=10
-        )
-        export_frame.pack(fill="x", pady=(0, 15))
-        
+
         # Preview button
         preview_button = tk.Button(
-            export_frame,
+            button_frame,
             text="Preview Weekly Report",
             command=self._preview_report,
-            bg=COLORS["primary"],
+            bg=COLORS["success"],
             fg=COLORS["background"],
-            font=("Arial", 10),
+            font=("Arial", 10,"bold"),
             relief=tk.RAISED,
             borderwidth=2,
             padx=10,
             pady=5
         )
-        preview_button.pack(fill="x", pady=5)
-        
-        # Export button
-        export_button = tk.Button(
-            export_frame,
-            text="Export to Markdown",
-            command=self._export_to_markdown,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        export_button.pack(fill="x", pady=5)
-        
-        # Summary button
-        summary_button = tk.Button(
-            export_frame,
-            text="Generate Weekly CSV Summary",
-            command=self._generate_csv_summary,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        summary_button.pack(fill="x", pady=5)
-    
-    def _create_filter_section(self, parent):
-        """Create the task filter section"""
-        filter_frame = tk.LabelFrame(
-            parent,
-            text="Filter Tasks",
-            bg=COLORS["background"],
-            fg=COLORS["text"],
-            font=("Arial", 11, "bold"),
-            padx=10,
-            pady=10
-        )
-        filter_frame.pack(fill="x", pady=(0, 15))
-
-        # Filter buttons
-        filter_button_frame = tk.Frame(filter_frame, bg=COLORS["background"])
-        filter_button_frame.pack(fill="x")
-        filter_button_frame.grid_columnconfigure(0, weight=1)
-        filter_button_frame.grid_columnconfigure(1, weight=1)
-        filter_button_frame.grid_columnconfigure(2, weight=1)
-
-        # All tasks button
-        self.all_button = tk.Button(
-            filter_button_frame,
-            text="All Tasks",
-            command=lambda: self.filter_tasks("all"),
-            bg=COLORS["primary"],  # Start with this one active
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=5,
-            pady=5
-        )
-        self.all_button.grid(row=0, column=0, padx=2, pady=5, sticky="ew")
-
-        # Active tasks button
-        self.active_button = tk.Button(
-            filter_button_frame,
-            text="Active Tasks",
-            command=lambda: self.filter_tasks("active"),
-            bg=COLORS["secondary"],
-            fg=COLORS["text"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=5,
-            pady=5
-        )
-        self.active_button.grid(row=0, column=1, padx=2, pady=5, sticky="ew")
-
-        # Finished tasks button
-        self.finished_button = tk.Button(
-            filter_button_frame,
-            text="Finished Tasks",
-            command=lambda: self.filter_tasks("finished"),
-            bg=COLORS["secondary"],
-            fg=COLORS["text"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=5,
-            pady=5
-        )
-        self.finished_button.grid(row=0, column=2, padx=2, pady=5, sticky="ew")
+        preview_button.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
     
     def _create_history_section(self, parent):
         """Create the task history section"""
@@ -341,14 +231,60 @@ class MainView:
             pady=10
         )
         history_frame.pack(fill="both", expand=True)
-        
+
         # Add scrollbar to history text
         scrollbar = tk.Scrollbar(history_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         # Custom font for history
         history_font = ("Consolas", 10)
-        
+
+        # Add filter buttons directly to the history frame
+        button_frame = tk.Frame(history_frame, bg=COLORS["background"])
+        button_frame.pack(fill="x", pady=(0, 0))
+
+        self.all_button = tk.Button(
+            button_frame,
+            text="All History",
+            command=lambda: self.filter_tasks("all"),
+            bg=COLORS["primary"],
+            fg=COLORS["background"],
+            font=("Arial", 10),
+            relief=tk.FLAT,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.all_button.grid(row=0, column=0, padx=2, pady=5, sticky="ew")
+
+        self.active_button = tk.Button(
+            button_frame,
+            text="In Progress",
+            command=lambda: self.filter_tasks("active"),
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.FLAT,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.active_button.grid(row=0, column=1, padx=2, pady=5, sticky="ew")
+
+        self.finished_button = tk.Button(
+            button_frame,
+            text="Completed",
+            command=lambda: self.filter_tasks("finished"),
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.FLAT,
+            borderwidth=2,
+            padx=5,
+            pady=5
+        )
+        self.finished_button.grid(row=0, column=2, padx=2, pady=5, sticky="ew")
+
         # History text widget with custom styling
         self.history_text = tk.Text(
             history_frame, 
@@ -365,7 +301,7 @@ class MainView:
         )
         self.history_text.pack(fill="both", expand=True)
         scrollbar.config(command=self.history_text.yview)
-        
+
         # Configure text tags for colored text in history
         self.history_text.tag_configure("completed", foreground=COLORS["success"])
         self.history_text.tag_configure("stopped", foreground=COLORS["warning"])
@@ -375,6 +311,8 @@ class MainView:
 
         self.history_text.bind("<Double-1>", self._show_task_notes)
 
+
+    
     def _create_status_bar(self):
         """Create the status bar at the bottom of the window"""
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
