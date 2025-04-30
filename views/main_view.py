@@ -493,7 +493,7 @@ class MainView:
                         entries.append({
                             'timestamp': stop_time_obj,
                             'timestamp_str': format_timestamp(stop_time),
-                            'icon': "✅",
+                            'icon': "⏹️",
                             'status': "Completed",
                             'desc': desc,
                             'tag': "completed"
@@ -503,7 +503,7 @@ class MainView:
                         entries.append({
                             'timestamp': start_time_obj,
                             'timestamp_str': format_timestamp(start_time),
-                            'icon': "▶️",
+                            'icon': "⏩",
                             'status': "In Progress",
                             'desc': desc,
                             'tag': "active"
@@ -535,7 +535,7 @@ class MainView:
             
             # Display all entries
             for entry in sorted_entries:
-                display_text = f"{entry['icon']} {entry['timestamp_str']}: - {entry['status']} - {entry['desc']}\n\n"
+                display_text = f"{entry['icon']} {entry['timestamp_str']}: - {entry['status']} - {entry['desc']}\n"
                 self.history_text.insert(tk.END, display_text, entry['tag'])
                     
         except Exception as e:
