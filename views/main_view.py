@@ -222,7 +222,7 @@ class MainView:
         # Preview button
         preview_button = tk.Button(
             export_frame,
-            text="Preview Weekly Report",
+            text="Generate Weekly Report",
             command=self._preview_report,
             bg=COLORS["primary"],
             fg=COLORS["background"],
