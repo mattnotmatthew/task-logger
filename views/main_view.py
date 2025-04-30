@@ -99,7 +99,6 @@ class MainView:
         
         # Add components to content frame
         self._create_actions_section(content_frame)
-        self._create_export_section(content_frame)
         self._create_filter_section(content_frame)
         self._create_history_section(content_frame)
         
@@ -206,63 +205,7 @@ class MainView:
         )
         bulk_action_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
     
-    def _create_export_section(self, parent):
-        """Create the export/reporting section"""
-        export_frame = tk.LabelFrame(
-            parent, 
-            text="Reporting", 
-            bg=COLORS["background"],
-            fg=COLORS["text"],
-            font=("Arial", 11, "bold"),
-            padx=10, 
-            pady=10
-        )
-        export_frame.pack(fill="x", pady=(0, 15))
-        
-        # Preview button
-        preview_button = tk.Button(
-            export_frame,
-            text="Preview Weekly Report",
-            command=self._preview_report,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        preview_button.pack(fill="x", pady=5)
-        
-        # Export button
-        export_button = tk.Button(
-            export_frame,
-            text="Export to Markdown",
-            command=self._export_to_markdown,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        export_button.pack(fill="x", pady=5)
-        
-        # Summary button
-        summary_button = tk.Button(
-            export_frame,
-            text="Generate Weekly CSV Summary",
-            command=self._generate_csv_summary,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        summary_button.pack(fill="x", pady=5)
+
     
     def _create_filter_section(self, parent):
         """Create the task filter section"""
@@ -629,14 +572,6 @@ class MainView:
         else:
             messagebox.showerror("Export Error", result)
     
-    def _generate_csv_summary(self):
-        """Generate a CSV summary of tasks"""
-        success, result = self.report_controller.summarize_tasks()
-        if success:
-            messagebox.showinfo("Summary Created", f"Weekly summary saved to {result}")
-        else:
-            messagebox.showerror("Summary Error", result)
-
     def _show_task_notes(self, event):
         """Display all notes for the double-clicked task."""
         try:
