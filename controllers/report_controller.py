@@ -175,30 +175,3 @@ class ReportController:
             return True, output_path
         except Exception as e:
             return False, f"Error exporting to markdown: {str(e)}"
-    
-    def summarize_tasks(self, days=7):
-        """
-        Generate a CSV summary of tasks
-        
-        Args:
-            days: Number of days to include in the summary
-            
-        Returns:
-            Tuple of (success, file path or error message)
-        """
-        try:
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=days)
-            
-            temp_df = self.model.df.copy()
-            temp_df["Start Time"] = pd.to_datetime(temp_df["Start Time"], errors='coerce')
-            
-            weekly = temp_df[temp_df["Start Time"].between(start_date, end_date)]
-            
-            date_str = datetime.now().strftime("%Y-%m-%d")
-            summary_file = f"{date_str}_weekly_summary.csv"
-            weekly.to_csv(summary_file, index=False)
-            
-            return True, summary_file
-        except Exception as e:
-            return False, f"Error creating summary: {str(e)}"

@@ -567,14 +567,6 @@ class MainView:
         else:
             messagebox.showerror("Export Error", result)
     
-    def _generate_csv_summary(self):
-        """Generate a CSV summary of tasks"""
-        success, result = self.report_controller.summarize_tasks()
-        if success:
-            messagebox.showinfo("Summary Created", f"Weekly summary saved to {result}")
-        else:
-            messagebox.showerror("Summary Error", result)
-
     def _show_task_notes(self, event):
         """Display all notes for the double-clicked task."""
         try:
