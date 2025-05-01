@@ -33,17 +33,29 @@ class TaskModel:
         else:
             self.df = pd.DataFrame(columns=[
                 "Task ID", "Task Description", "Start Time", "Stop Time", 
-                "Duration (min)", "Completed", "Notes", "Active","Updated"
+                "Duration (min)", "Completed", "Notes", "Active", "Updated"
             ])
             self.save_data()
         
+        # Track whether any columns were added
+        columns_added = False
+        
         # Ensure necessary columns exist
         required_columns = ["Task ID", "Task Description", "Start Time", "Stop Time", 
-                         "Duration (min)", "Completed", "Notes", "Active","Updated"]
+                        "Duration (min)", "Completed", "Notes", "Active", "Updated"]
         for col in required_columns:
             if col not in self.df.columns:
-                self.df[col] = ""
-    
+                print(f"Column '{col}' does not exist. Adding it.")
+                self.df[col] = ""  # Using empty string for all columns including Updated
+                columns_added = True  # Set flag when a column is added
+            else:
+                print(f"Column '{col}' already exists.")
+        
+        # After adding any missing columns, save the updated DataFrame
+        if columns_added:
+            print("Saving updated DataFrame with missing columns.")
+            self.save_data()
+        
     def save_data(self):
         """
         Save the DataFrame to the CSV file
@@ -203,3 +215,16 @@ class TaskModel:
         except Exception as e:
             print(f"Error getting recent tasks: {e}")
             return pd.DataFrame()
+        
+
+
+        # Add this method to your TaskModel class
+    def add_updated_column(self):
+        """
+        Add the 'Updated' column to the tasks DataFrame and save changes.
+        """
+        # Add the Updated column with NaN values
+        self.tasks_df['Updated'] = ""
+        
+        # Save the updated DataFrame back to the file
+        self.save_tasks()

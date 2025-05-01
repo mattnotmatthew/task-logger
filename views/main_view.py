@@ -40,7 +40,7 @@ class MainView:
         
         # Set up UI components
         self.setup_ui()
-        
+    
         # Apply always on top setting
         self.toggle_always_on_top()
 
@@ -49,7 +49,8 @@ class MainView:
         
         # Refresh history on load
         self.refresh_history()
-    
+        
+
     def configure_styles(self):
         """Configure ttk styles for consistent look and feel"""
         style = ttk.Style()
@@ -686,14 +687,23 @@ class MainView:
                 return
 
             selected_tasks = [task_listbox.get(i) for i in selected_indices]
-            for task in selected_tasks:
-                note = simpledialog.askstring("Add Note", f"Enter a note for task: {task}")
+            for task_full in selected_tasks:
+                # Extract just the task description (after the timestamp)
+                task_description = task_full.split(" - ", 1)[1] if " - " in task_full else task_full
+                
+                note = simpledialog.askstring("Add Note", f"Enter a note for task: {task_description}")
                 if note:
-                    task_indices = self.task_controller.model.get_tasks(task_description=task).index
-                    for idx in task_indices:
-                        # Pass the current timestamp to update the "Updated" field
-                        current_time = datetime.now()
-                        self.task_controller.update_task_notes(task, note, current_time)
+                    # Get tasks matching just the description part
+                    matching_tasks = self.task_controller.model.get_tasks(task_description=task_description)
+                    
+                    if not matching_tasks.empty:
+                        for idx in matching_tasks.index:
+                            # Pass the current timestamp to update the "Updated" field
+                            current_time = datetime.now()
+                            self.task_controller.update_task_notes(task_description, note, current_time)
+                            
+                            # Add debug output to verify the task is being processed
+                            print(f"Adding note to task: {task_description} at index {idx}")
 
             messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
             dialog.destroy()

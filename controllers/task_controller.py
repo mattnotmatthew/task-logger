@@ -192,7 +192,7 @@ class TaskController:
             self._append_to_log(f"✅ {stop_time_str}: - Completed - {task_description} ({duration} min)\n\n")
                 
         return True, f"Marked '{task_description}' as completed."
-    
+        
     def update_task_notes(self, task_description, note, timestamp=None):
         """
         Update notes for a task
@@ -206,11 +206,16 @@ class TaskController:
             Boolean indicating success
         """
         try:
+            print(f"Updating notes for: '{task_description}'")
+            
             # Find the task by description
             task_df = self.model.get_tasks(task_description=task_description)
             
             if task_df.empty:
+                print(f"No tasks found matching description: '{task_description}'")
                 return False
+            
+            print(f"Found {len(task_df)} matching tasks")
             
             # Update the first matching task (should be unique)
             task_idx = task_df.index[0]
@@ -218,17 +223,24 @@ class TaskController:
             current_time = timestamp or datetime.now()
             current_time_str = current_time.strftime("%Y-%m-%d %H:%M")
             
+            print(f"Adding note: '{note}' with timestamp: {current_time_str}")
+            
             # Add note with timestamp
             success = self.model.add_notes(task_idx, note, current_time)
             
             # Log the note update
             if success:
-                self._append_to_log(f"ℹ️{current_time_str}: - Notes Added - {task_description}\n")
+                print("Note added successfully")
+                self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
+            else:
+                print("Failed to add note")
             
             return success
         except Exception as e:
             print(f"Error updating task notes: {e}")
-            return False   
+            import traceback
+            traceback.print_exc()
+            return False  
             
     # def update_task_notes(self, task_description, note, timestamp=None):
     #     """
