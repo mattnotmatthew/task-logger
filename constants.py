@@ -3,6 +3,7 @@
 import os
 
 # Application version
+
 VERSION = "1.11.0"
 
 # File and directory paths
