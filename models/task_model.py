@@ -33,13 +33,13 @@ class TaskModel:
         else:
             self.df = pd.DataFrame(columns=[
                 "Task ID", "Task Description", "Start Time", "Stop Time", 
-                "Duration (min)", "Completed", "Notes", "Active"
+                "Duration (min)", "Completed", "Notes", "Active","Updated"
             ])
             self.save_data()
         
         # Ensure necessary columns exist
         required_columns = ["Task ID", "Task Description", "Start Time", "Stop Time", 
-                         "Duration (min)", "Completed", "Notes", "Active"]
+                         "Duration (min)", "Completed", "Notes", "Active","Updated"]
         for col in required_columns:
             if col not in self.df.columns:
                 self.df[col] = ""
@@ -129,7 +129,7 @@ class TaskModel:
             print(f"Error updating task: {e}")
             return False
     
-    def add_notes(self, idx, notes):
+    def add_notes(self, idx, notes, update_time=None):
         """
         Add notes to an existing task
         
@@ -140,12 +140,19 @@ class TaskModel:
         Returns:
             Boolean indicating success
         """
+        clean_update_time = update_time.strftime("%Y-%m-%d %H:%M") if update_time else None
         try:
+            # Update the notes
             current_notes = self.df.at[idx, "Notes"]
             if current_notes and current_notes.strip():
                 self.df.at[idx, "Notes"] = f"{current_notes} | {notes}"
             else:
                 self.df.at[idx, "Notes"] = notes
+
+            # Update the "Update" column with the timestamp if provided
+            if update_time is not None:
+                self.df.at[idx, "Updated"] = clean_update_time
+
             return self.save_data()
         except Exception as e:
             print(f"Error adding notes: {e}")

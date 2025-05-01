@@ -1,5 +1,6 @@
 # views/main_view.py
 
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
@@ -42,6 +43,9 @@ class MainView:
         
         # Apply always on top setting
         self.toggle_always_on_top()
+
+        # setup logging
+        self.setup_logging()
         
         # Refresh history on load
         self.refresh_history()
@@ -109,7 +113,20 @@ class MainView:
         min_width = 500
         min_height = 500  # Reduced minimum height
         self.root.minsize(min_width, min_height)
-    
+
+    def setup_logging(self):
+        """Set up the initial log file."""
+        log_file_path = "exports/task_history.log"  # Path to the log file
+
+        # Use the task_controller to fetch the DataFrame
+        df = self.task_controller.model.get_tasks()  # Fetch all tasks from the model
+
+        # Define a formatting function for timestamps
+        format_func = lambda ts: ts.strftime("%Y-%m-%d %H:%M") if pd.notna(ts) else "No timestamp"
+
+        # Call _create_initial_log with the fetched DataFrame
+        self._create_initial_log(log_file_path, df, format_func)   
+
     def _create_header_frame(self):
         """Create the header frame with title and controls"""
         header_frame = tk.Frame(self.root, bg=COLORS["primary"], padx=10, pady=10)
@@ -308,6 +325,7 @@ class MainView:
         self.history_text.tag_configure("active", foreground=COLORS["primary"])
         self.history_text.tag_configure("timestamp", foreground=COLORS["light_text"], font=(history_font[0], history_font[1], "italic"))
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
+        self.history_text.tag_configure("notes_only", foreground=COLORS["sidebar"])
 
         self.history_text.bind("<Double-1>", self._show_task_notes)
 
@@ -376,8 +394,13 @@ class MainView:
         # Refresh the task history with filtered results
         self.refresh_history()
     
-    def refresh_history(self):
-        """Refresh the task history display"""
+    def refresh_history(self, notes_only=False):
+        """
+        Refresh the task history display
+        
+        Args:
+            notes_only: If True, only display notes-related entries
+        """
         self.history_text.config(state="normal")
         self.history_text.delete(1.0, tk.END)
         
@@ -385,7 +408,7 @@ class MainView:
             # Get recent tasks
             task_model = self.task_controller.model
             sorted_df = task_model.get_recent_tasks(days=7, limit=25)
-
+            
             # Apply current filter
             if self.current_filter == "active":
                 sorted_df = sorted_df[sorted_df["Active"] == 1]
@@ -398,50 +421,235 @@ class MainView:
                 active_count = len(sorted_df[sorted_df["Active"] == 1])
                 if active_count > 0:
                     self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
-
-            # Display recent tasks
+            
+            # Format the timestamp safely
+            def format_timestamp(ts):
+                if pd.notna(ts):
+                    try:
+                        # If it's already a string, return it
+                        if isinstance(ts, str):
+                            return ts
+                        # If it's a datetime, format it
+                        return ts.strftime("%Y-%m-%d %H:%M")
+                    except (AttributeError, ValueError):
+                        return "Invalid timestamp"
+                return "No timestamp"
+            
+            # Create a list of all entries for chronological sorting
+            entries = []
+            
+            # Process each task and create entries
             for _, row in sorted_df.iterrows():
                 desc = row["Task Description"]
                 start_time = row["Start Time"]
                 stop_time = row["Stop Time"]
+                updated = row["Updated"]
                 active = row["Active"] == 0
-                duration = f"{row['Duration (min)']} min" if pd.notna(row["Duration (min)"]) else "-"
-                note = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
-                note_snippet = (note[:100] + "...") if len(note) > 100 else note
-
-                # Format the timestamp safely
-                def format_timestamp(ts):
-                    if pd.notna(ts):
-                        try:
-                            return ts.strftime("%Y-%m-%d %H:%M")
-                        except (AttributeError, ValueError):
-                            return "Invalid timestamp"
-                    return "No timestamp"
-
-                if active:
-                    icon = "✅"
-                    timestamp = format_timestamp(stop_time)
-                    status = "Completed"
-                    tag = "completed"
-                else:
-                    icon = "▶️"
-                    timestamp = format_timestamp(start_time)
-                    status = "In Progress"
-                    tag = "active"
-
-                self.history_text.insert(tk.END, f"{icon} ", tag)
-                self.history_text.insert(tk.END, f"{timestamp}: ", "timestamp")
-                self.history_text.insert(tk.END, f"- {status} - ", tag)
-                self.history_text.insert(tk.END, f"{desc}", tag)
-
-                self.history_text.insert(tk.END, "\n\n")
                 
+                # Parse timestamps to datetime objects for sorting
+                start_time_obj = None
+                stop_time_obj = None
+                updated_obj = None
+                
+                try:
+                    if isinstance(start_time, str):
+                        start_time_obj = datetime.strptime(start_time, "%Y-%m-%d %H:%M")
+                    else:
+                        start_time_obj = start_time
+                except (ValueError, TypeError):
+                    pass
+                    
+                try:
+                    if isinstance(stop_time, str):
+                        stop_time_obj = datetime.strptime(stop_time, "%Y-%m-%d %H:%M")
+                    else:
+                        stop_time_obj = stop_time
+                except (ValueError, TypeError):
+                    pass
+                    
+                try:
+                    if isinstance(updated, str):
+                        updated_obj = datetime.strptime(updated, "%Y-%m-%d %H:%M")
+                    else:
+                        updated_obj = updated
+                except (ValueError, TypeError):
+                    pass
+                
+                # If notes_only is True, only include note updates
+                if notes_only:
+                    if pd.notna(updated):
+                        entries.append({
+                            'timestamp': updated_obj,
+                            'timestamp_str': format_timestamp(updated),
+                            'icon': "ℹ️",
+                            'status': "Notes Added",
+                            'desc': desc,
+                            'tag': "notes_only"
+                        })
+                else:
+                    # Add task entries (both active and completed)
+                    if active:
+                        # Completed task
+                        entries.append({
+                            'timestamp': stop_time_obj,
+                            'timestamp_str': format_timestamp(stop_time),
+                            'icon': "✅",
+                            'status': "Completed",
+                            'desc': desc,
+                            'tag': "completed"
+                        })
+                    else:
+                        # Active task
+                        entries.append({
+                            'timestamp': start_time_obj,
+                            'timestamp_str': format_timestamp(start_time),
+                            'icon': "▶️",
+                            'status': "In Progress",
+                            'desc': desc,
+                            'tag': "active"
+                        })
+                    
+                    # Add note update entry if it exists
+                    if pd.notna(updated):
+                        entries.append({
+                            'timestamp': updated_obj,
+                            'timestamp_str': format_timestamp(updated),
+                            'icon': "ℹ️",
+                            'status': "Notes Updated",
+                            'desc': desc,
+                            'tag': "notes_only"
+                        })
+            
+            # Sort entries by timestamp (newest first)
+            # First handle entries with valid timestamp objects
+            entries_with_timestamp = [e for e in entries if e['timestamp'] is not None]
+            entries_without_timestamp = [e for e in entries if e['timestamp'] is None]
+            
+            # Sort entries with timestamps
+            sorted_entries = sorted(entries_with_timestamp, 
+                                key=lambda x: x['timestamp'], 
+                                reverse=True)
+            
+            # Append entries without timestamps at the end
+            sorted_entries.extend(entries_without_timestamp)
+            
+            # Display all entries
+            for entry in sorted_entries:
+                display_text = f"{entry['icon']} {entry['timestamp_str']}: - {entry['status']} - {entry['desc']}\n\n"
+                self.history_text.insert(tk.END, display_text, entry['tag'])
+                    
         except Exception as e:
             import traceback
-            self.history_text.insert(tk.END, f"Error refreshing history: {str(e)}\n")
+            error_message = f"Error refreshing history: {str(e)}\n"
+            self.history_text.insert(tk.END, error_message)
             self.history_text.insert(tk.END, traceback.format_exc())
         
         self.history_text.config(state="disabled")
+
+    def _create_initial_log(self, log_file_path, df, format_func):
+        """
+        Create the initial log file from existing data if it does not already exist.
+        """
+        try:
+            # Check if the log file already exists
+            if os.path.exists(log_file_path):
+                print(f"Log file already exists at {log_file_path}. Skipping initial log creation.")
+                return  # Exit the function if the file exists
+
+            # Ensure relevant columns are converted to datetime
+            for col in ["Start Time", "Stop Time", "Updated"]:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+
+            # Create the log file
+            with open(log_file_path, "w", encoding="utf-8") as log_file:
+                log_file.write(f"# Task Logger History - Created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                # Create a new DataFrame for all events to sort chronologically
+                events = []
+                
+                # Process active tasks (start times)
+                active_tasks = df[df["Active"] == 1].copy()
+                for _, row in active_tasks.iterrows():
+                    events.append({
+                        "timestamp": row["Start Time"],
+                        "desc": row["Task Description"],
+                        "event_type": "start",
+                        "formatted_time": format_func(row["Start Time"]),
+                        "emoji": "▶️",
+                        "status": "In Progress"
+                    })
+                
+                # Process completed tasks
+                completed_tasks = df[df["Active"] == 0].copy()
+                for _, row in completed_tasks.iterrows():
+                    # Add start event for completed tasks
+                    if pd.notna(row["Start Time"]):
+                        events.append({
+                            "timestamp": row["Start Time"],
+                            "desc": row["Task Description"],
+                            "event_type": "start",
+                            "formatted_time": format_func(row["Start Time"]),
+                            "emoji": "▶️",
+                            "status": "Started"
+                        })
+                    
+                    # Add completion event
+                    if pd.notna(row["Stop Time"]):
+                        events.append({
+                            "timestamp": row["Stop Time"],
+                            "desc": row["Task Description"],
+                            "event_type": "stop",
+                            "formatted_time": format_func(row["Stop Time"]),
+                            "emoji": "✅",
+                            "status": "Completed"
+                        })
+                
+                # Process note updates
+                note_updates = df[pd.notna(df["Updated"])].copy()
+                for _, row in note_updates.iterrows():
+                    events.append({
+                        "timestamp": row["Updated"],
+                        "desc": row["Task Description"],
+                        "event_type": "update",
+                        "formatted_time": format_func(row["Updated"]),
+                        "emoji": "ℹ️",
+                        "status": "Notes Updated"
+                    })
+                
+                # Convert to DataFrame and sort chronologically (newest first)
+                events_df = pd.DataFrame(events)
+                if not events_df.empty:
+                    events_df = events_df.sort_values(by="timestamp", ascending=False)
+                    
+                    # Write all events in chronological order
+                    log_file.write("## Task History\n\n")
+                    for _, event in events_df.iterrows():
+                        log_file.write(f"{event['emoji']} {event['formatted_time']}: - {event['status']} - {event['desc']}\n\n")
+                else:
+                    log_file.write("## No Task History\n\nNo tasks have been recorded yet.\n\n")
+                    
+        except Exception as e:
+            print(f"Error creating initial log file: {e}")
+
+    def _append_to_log(self, log_file_path, entry):
+        """
+        Append an entry to the task history log file
+        
+        Args:
+            log_file_path: Path to the log file
+            entry: Text entry to append
+        """
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+            
+            # Append to the log file
+            with open(log_file_path, "a", encoding="utf-8") as log_file:
+                log_file.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {entry}")
+        except Exception as e:
+            print(f"Error appending to log: {e}")
+
     
     # Dialog methods
     def _show_start_task_dialog(self):
@@ -498,9 +706,13 @@ class MainView:
                 if note:
                     task_indices = self.task_controller.model.get_tasks(task_description=task).index
                     for idx in task_indices:
-                        self.task_controller.model.add_notes(idx, note)
+                        # Pass the current timestamp to update the "Updated" field
+                        current_time = datetime.now()
+                        self.task_controller.update_task_notes(task, note, current_time)
 
             messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
+            dialog.destroy()
+            # Remove notes_only=True to show the full history
             self.refresh_history()
 
         # Button frame
