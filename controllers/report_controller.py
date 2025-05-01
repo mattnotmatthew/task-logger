@@ -130,8 +130,8 @@ class ReportController:
         
             # Save as temp HTML file
             temp_html = f"exports/temp_preview_{datetime.now().strftime('%Y%m%d%H%M%S')}.html"
-            abolute_path = os.path.abspath(temp_html)
-            file_url = f"file://{abolute_path}"
+            absolute_path = os.path.abspath(temp_html)
+            file_url = f"file://{absolute_path}"
 
             with open(temp_html, "w", encoding="utf-8") as f:
                 f.write(f"""
