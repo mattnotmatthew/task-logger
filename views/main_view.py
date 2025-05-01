@@ -349,9 +349,7 @@ class MainView:
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
         self.history_text.tag_configure("notes_only", foreground=COLORS["sidebar"])
 
-        self.history_text.bind("<Double-1>", self._show_task_notes)
-
-
+       
     def _create_status_bar(self):
         """Create the status bar at the bottom of the window"""
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
@@ -430,16 +428,19 @@ class MainView:
             # Apply current filter
             if self.current_filter == "active":
                 filtered_df = sorted_df[sorted_df["Active"] == 1]
-                self.history_text.insert(tk.END, "Showing active tasks only\n\n", "active")
+                active_count = len(filtered_df)
+                self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
             elif self.current_filter == "finished":
                 filtered_df = sorted_df[sorted_df["Active"] == 0]
-                self.history_text.insert(tk.END, "Showing finished tasks only\n\n", "completed")
+                # If showing finished tasks, add a summary of completed tasks
+                completed_count = len(filtered_df)
+                self.history_text.insert(tk.END, f"You have {completed_count} finished task(s)\n\n", "completed")
             else:
                 filtered_df = sorted_df
                 # If showing all tasks, add a summary of active tasks
-                active_count = len(sorted_df[sorted_df["Active"] == 1])
-                if active_count > 0:
-                    self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
+                all_count = len(filtered_df)
+                if all_count > 0:
+                    self.history_text.insert(tk.END, f"You have {all_count} total task(s)\n\n", "active")
 
             # Format the timestamp safely
             def format_timestamp(ts):
@@ -654,7 +655,8 @@ class MainView:
         task_listbox = tk.Listbox(content, selectmode=tk.MULTIPLE, bg=COLORS["background"], fg=COLORS["text"], font=("Courier", 10))
         task_listbox.pack(fill="both", expand=True, padx=10, pady=5)
 
-
+        # Bind double-click event to the listbox
+        task_listbox.bind("<Double-1>", lambda event: self._handle_task_listbox_double_click(event, task_listbox))
 
         # Populate the listbox with tasks
         for start_date, task_description in tasks:
@@ -763,15 +765,25 @@ class MainView:
         else:
             messagebox.showerror("Export Error", result)
     
-    def _show_task_notes(self, event):
-        """Display all notes for the double-clicked task."""
+    def _handle_task_listbox_double_click(self, event, listbox):
+        """Handle double-click on a task in the task listbox"""
         try:
-            index = self.history_text.index("@%s,%s linestart" % (event.x, event.y))
-            line_content = self.history_text.get(index, "%s lineend" % index)
-            task_description = line_content.rsplit("-", 1)[-1].strip()
+            # Get the selected index
+            selected_index = listbox.nearest(event.y)
+            if selected_index >= 0:
+                # Get the task text
+                task_text = listbox.get(selected_index)
+                # Extract just the task description part (after the timestamp)
+                task_description = task_text.split(" - ", 1)[1] if " - " in task_text else task_text
+                # Call the existing method to show notes
+                self._show_task_notes_from_description(task_description)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not show task notes: {str(e)}")
 
+    def _show_task_notes_from_description(self, task_description):
+        """Display notes for a task based on its description."""
+        try:
             notes = self.task_controller.get_task_notes(task_description)
-
             dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 400, 300)
 
             # Create the text widget with monospaced font
@@ -781,7 +793,7 @@ class MainView:
                 state="normal",
                 bg=COLORS["background"],
                 fg=COLORS["text"],
-                font=("Arial", 10),  # Monospaced font
+                font=("Arial", 10),
                 relief=tk.SUNKEN,
                 borderwidth=2,
                 padx=5,
