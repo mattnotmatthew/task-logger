@@ -784,7 +784,7 @@ class MainView:
         """Display notes for a task based on its description."""
         try:
             notes = self.task_controller.get_task_notes(task_description)
-            dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 400, 300)
+            dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 500, 300)
 
             # Create the text widget with monospaced font
             notes_text = tk.Text(

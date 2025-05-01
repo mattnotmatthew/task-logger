@@ -274,7 +274,7 @@ class TaskController:
             return "No notes available."
 
         notes = tasks["Notes"].dropna().tolist()
-        return "\n".join(note.replace("|", "\n") for note in notes)
+        return "\n".join(f"> {note.replace(' | ', '\n> ').strip()}" for note in notes)
     
     def _append_to_log(self, entry):
         """
