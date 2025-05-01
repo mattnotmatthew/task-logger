@@ -17,23 +17,25 @@ class TaskController:
     
     def get_active_tasks(self):
         """
-        Get list of currently active tasks
+        Get list of currently active tasks with their start times
         
         Returns:
-            List of unique active task descriptions
+            List of tuples (start_time, task_description) ordered by Start Time descending
         """
         active = self.model.get_tasks(active=True)
-        return sorted(active["Task Description"].unique())
+        active = active.sort_values(by="Start Time", ascending=True)
+        return [(row["Start Time"], row["Task Description"]) for _, row in active.iterrows()]
     
-    def get_inactive_tasks(self):
+    def get_finished_tasks(self):
         """
         Get list of currently inactive tasks
         
         Returns:
-            List of unique inactive task descriptions
+            List of tuples (start_time, task_description) ordered by Start Time ascending
         """
-        inactive = self.model.get_tasks(active=False, completed=False)
-        return sorted(inactive["Task Description"].unique())
+        inactive = self.model.get_tasks(active=False, completed=True)
+        inactive = inactive.sort_values(by="Start Time", ascending=True)
+        return [(row["Start Time"], row["Task Description"]) for _, row in inactive.iterrows()]
     
     def start_task(self, task_description, notes=""):
         """
