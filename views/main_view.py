@@ -405,9 +405,8 @@ class MainView:
                 start_time = row["Start Time"]
                 stop_time = row["Stop Time"]
                 active = row["Active"] == 0
-                duration = f"{row['Duration (min)']} min" if pd.notna(row["Duration (min)"]) else "-"
                 note = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
-                note_snippet = (note[:100] + "...") if len(note) > 100 else note
+
 
                 # Format the timestamp safely
                 def format_timestamp(ts):
@@ -417,24 +416,25 @@ class MainView:
                         except (AttributeError, ValueError):
                             return "Invalid timestamp"
                     return "No timestamp"
+                
 
+                last_activity = max(start_time, stop_time)
+                timestamp = format_timestamp(last_activity)
                 if active:
-                    icon = "✅"
-                    timestamp = format_timestamp(stop_time)
+                    icon = "▶️"
                     status = "Completed"
                     tag = "completed"
                 else:
-                    icon = "▶️"
-                    timestamp = format_timestamp(start_time)
+                    icon = "⏩"
                     status = "In Progress"
                     tag = "active"
 
                 self.history_text.insert(tk.END, f"{icon} ", tag)
-                self.history_text.insert(tk.END, f"{timestamp}: ", "timestamp")
+                self.history_text.insert(tk.END, f"{timestamp} ", "timestamp")
                 self.history_text.insert(tk.END, f"- {status} - ", tag)
                 self.history_text.insert(tk.END, f"{desc}", tag)
 
-                self.history_text.insert(tk.END, "\n\n")
+                self.history_text.insert(tk.END, "\n")
                 
         except Exception as e:
             import traceback

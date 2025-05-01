@@ -46,72 +46,63 @@ class ReportController:
         pending_tasks = recent[recent["Active"] != 0]
         
         export_date = datetime.now().strftime("%Y-%m-%d")
-        lines = ["# 📋 5-15\n"]
-        lines.append("### Name: [InsertName]")
-        lines.append(f"### Week Ending: {export_date}\n")
+        lines = ["📋 5-15\n"]
+        lines.append(f"<strong>Name</strong>: [InsertName]<br><strong>Week Ending</strong>: {export_date}")
         
         # Accomplishments section
-        lines.append("## Accomplishments this week")
-        
+        lines.append("### Accomplishments this week")
+                
         if not completed_tasks.empty:
             # Group completed tasks by description
             completed_grouped = completed_tasks.groupby("Task Description")
             
             for task, group in completed_grouped:
-                lines.append(f"### ✅ {task}")
+                lines.append(f"- {task}")
+                
                 
                 for _, row in group.iterrows():
-                    stop_time = row["Stop Time"]
-                    start_time = row["Start Time"]
+                    note_text = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
                     
-                    timestamp = (
-                        stop_time.strftime("%Y-%m-%d %H:%M")
-                        if pd.notna(stop_time)
-                        else start_time.strftime("%Y-%m-%d %H:%M")
-                    )
-                    duration = f"{row['Duration (min)']} min" if pd.notna(row["Duration (min)"]) else "-"
-                    note = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
+                    # Split notes by the pipe delimiter
+                    individual_notes = note_text.split("|")
                     
-                    lines.append(
-                        f"- [NEW: {timestamp}] Completed: duration of {duration}; {note}"
-                    )
+                    # Add each note as a separate bullet point, stripping whitespace
+                    for note in individual_notes:
+                        if note.strip():  # Only add if note isn't empty after stripping
+                            lines.append(f"     - {note.strip()}")
                 
                 lines.append("")  # Add a blank line between task groups
         else:
             lines.append("*No completed tasks this week*\n")
         
         # Priorities section
-        lines.append("## Priorities next week")
+        lines.append("### Priorities next week")
         
         if not pending_tasks.empty:
             # Group pending tasks by description
             pending_grouped = pending_tasks.groupby("Task Description")
             
             for task, group in pending_grouped:
-                icon = "🟡"  # In progress icon
-                lines.append(f"### {icon} {task}")
+                lines.append(f"- {task}")
+                lines.append("")  # Add a blank line after the task heading
                 
                 for _, row in group.iterrows():
-                    stop_time = row["Stop Time"]
-                    start_time = row["Start Time"]
+                    note_text = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
                     
-                    timestamp = (
-                        stop_time.strftime("%Y-%m-%d %H:%M")
-                        if pd.notna(stop_time)
-                        else start_time.strftime("%Y-%m-%d %H:%M")
-                    )
-                    status = "Stopped" if pd.notna(stop_time) else "In Progress"
-                    duration = f"{row['Duration (min)']} min" if pd.notna(row["Duration (min)"]) else "-"
-                    note = str(row["Notes"]) if pd.notna(row["Notes"]) else ""
+                    # Split notes by the pipe delimiter
+                    individual_notes = note_text.split("|")
                     
-                    lines.append(
-                        f"- [NEW: {timestamp}] {status}: duration of {duration}; {note}"
-                    )
+                    # Add each note as a separate bullet point, stripping whitespace
+                    for note in individual_notes:
+                        if note.strip():  # Only add if note isn't empty after stripping
+                            lines.append(f"     - {note.strip()}")
                 
                 lines.append("")  # Add a blank line between task groups
         else:
             lines.append("*No pending tasks for next week*\n")
         
+        lines.append("### Risks/Challenges")
+        lines.append("### Learnings, Opportunities, Feedback, or Observations")
         return "\n".join(lines)
     
     def preview_markdown(self):
@@ -126,20 +117,23 @@ class ReportController:
             
             # Convert to HTML
             html = markdown.markdown(md_content)
-            
+        
             # Save as temp HTML file
-            temp_html = f"temp_preview_{datetime.now().strftime('%Y%m%d%H%M%S')}.html"
+            temp_html = f"exports/temp_preview_{datetime.now().strftime('%Y%m%d%H%M%S')}.html"
+            abolute_path = os.path.abspath(temp_html)
+            file_url = f"file://{abolute_path}"
+
             with open(temp_html, "w", encoding="utf-8") as f:
                 f.write(f"""
                 <html>
                 <head>
                     <style>
-                        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; color: #333; }}
+                        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; color: #000; }}
                         h1 {{ color: #2c3e50; border-bottom: 2px solid #4287f5; padding-bottom: 10px; }}
                         h2 {{ color: #34495e; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }}
-                        h3 {{ color: #3498db; margin-top: 20px; }}
+                        h3 {{ color: #3498db; margin-top: 20px; margin-bottom: 10px; }}
                         ul {{ padding-left: 20px; }}
-                        li {{ margin-bottom: 10px; }}
+                        li {{ margin-bottom: 10px; margin-bottom: 0 !important; }}
                         .timestamp {{ color: #777; font-style: italic; }}
                         .note {{ background-color: #f8f9fa; padding: 5px 10px; border-left: 3px solid #4287f5; margin-top: 5px; }}
                     </style>
@@ -151,7 +145,7 @@ class ReportController:
                 """)
             
             # Open in default browser
-            webbrowser.open(temp_html)
+            webbrowser.open(file_url)
             return True, f"Preview opened in browser: {temp_html}"
         except Exception as e:
             return False, f"Error generating preview: {str(e)}"
