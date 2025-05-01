@@ -4,14 +4,14 @@ import os
 
 # Application version
 
-VERSION = "1.12.0"
+VERSION = "1.14.0"
 
 # File and directory paths
 CSV_FILE = "task_log.csv"
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".task_logger")
 
 # Default settings
-DEFAULT_WINDOW_SIZE = "650x500"
+DEFAULT_WINDOW_SIZE = "710x425"
 
 # UI Colors
 COLORS = {

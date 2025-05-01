@@ -110,8 +110,8 @@ class MainView:
         
         # Set minimum window size to ensure all elements are visible
         self.root.update_idletasks()
-        min_width = 500
-        min_height = 500  # Reduced minimum height
+        min_width = 700
+        min_height = 550  # Reduced minimum height
         self.root.minsize(min_width, min_height)
 
     def setup_logging(self):
@@ -175,10 +175,14 @@ class MainView:
         # Create a button frame with grid layout for task actions
         button_frame = tk.Frame(actions_frame, bg=COLORS["background"])
         button_frame.pack(fill="x")
-        button_frame.grid_columnconfigure(0, weight=1)
-        button_frame.grid_columnconfigure(1, weight=1)
         
-        # Task action buttons
+        # Configure all columns to have equal weight
+        for i in range(4):  # Assuming you have 4 columns
+            button_frame.grid_columnconfigure(i, weight=1)
+        
+        # Task action buttons with minimum width
+        min_width = 12  # Set a minimum width for buttons
+        
         start_button = tk.Button(
             button_frame, 
             text="Start Task", 
@@ -189,10 +193,11 @@ class MainView:
             relief=tk.RAISED,
             borderwidth=2,
             padx=10,
-            pady=5
+            pady=5,
+            width=min_width  # Set minimum width
         )
         start_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-    
+
         finish_button = tk.Button(
             button_frame, 
             text="Finish Task", 
@@ -203,25 +208,42 @@ class MainView:
             relief=tk.RAISED,
             borderwidth=2,
             padx=10,
-            pady=5
+            pady=5,
+            width=min_width  # Set minimum width
         )
         finish_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
-        bulk_action_button = tk.Button(
+        show_active_tasks = tk.Button(
             button_frame, 
             text="View Active Tasks", 
-            command=self._show_bulk_action_window, 
+            command=self._show_tasks_window, 
             bg=COLORS["primary"],
             fg=COLORS["background"], 
             font=("Arial", 10, "bold"),
             relief=tk.RAISED,
             borderwidth=2,
             padx=10,
-            pady=5
+            pady=5,
+            width=min_width  # Set minimum width
         )
-        bulk_action_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-
-        # Preview button
+        show_active_tasks.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+        
+        show_inactive_tasks = tk.Button(
+            button_frame, 
+            text="View Completed Tasks", 
+            command=lambda: self._show_tasks_window("finished"), 
+            bg=COLORS["primary"],
+            fg=COLORS["background"], 
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5,
+            width=min_width  # Set minimum width
+        )
+        show_inactive_tasks.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+    
+        # Preview button spanning all columns
         preview_button = tk.Button(
             button_frame,
             text="Generate Weekly Report",
@@ -234,7 +256,7 @@ class MainView:
             padx=10,
             pady=5
         )
-        preview_button.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        preview_button.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky="ew")  # Note the columnspan=4
     
     def _create_history_section(self, parent):
         """Create the task history section"""
@@ -327,10 +349,7 @@ class MainView:
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
         self.history_text.tag_configure("notes_only", foreground=COLORS["sidebar"])
 
-        self.history_text.bind("<Double-1>", self._show_task_notes)
-
-
-    
+       
     def _create_status_bar(self):
         """Create the status bar at the bottom of the window"""
         status_frame = tk.Frame(self.root, bg=COLORS["sidebar"], padx=5, pady=3)
@@ -349,7 +368,7 @@ class MainView:
         # Add a refresh button to the status bar
         refresh_button = tk.Button(
             status_frame,
-            text="↻ Refresh",
+            text="🔃Refresh",
             command=self.refresh_history,
             bg=COLORS["sidebar"],
             fg=COLORS["sidebar_text"],
@@ -409,16 +428,19 @@ class MainView:
             # Apply current filter
             if self.current_filter == "active":
                 filtered_df = sorted_df[sorted_df["Active"] == 1]
-                self.history_text.insert(tk.END, "Showing active tasks only\n\n", "active")
+                active_count = len(filtered_df)
+                self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
             elif self.current_filter == "finished":
                 filtered_df = sorted_df[sorted_df["Active"] == 0]
-                self.history_text.insert(tk.END, "Showing finished tasks only\n\n", "completed")
+                # If showing finished tasks, add a summary of completed tasks
+                completed_count = len(filtered_df)
+                self.history_text.insert(tk.END, f"You have {completed_count} finished task(s)\n\n", "completed")
             else:
                 filtered_df = sorted_df
                 # If showing all tasks, add a summary of active tasks
-                active_count = len(sorted_df[sorted_df["Active"] == 1])
-                if active_count > 0:
-                    self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
+                all_count = len(filtered_df)
+                if all_count > 0:
+                    self.history_text.insert(tk.END, f"You have {all_count} total task(s)\n\n", "active")
 
             # Format the timestamp safely
             def format_timestamp(ts):
@@ -614,24 +636,33 @@ class MainView:
         """Show dialog to finish a task"""
         self.dialog_factory.create_finish_task_dialog(self.refresh_history)
 
-    def _show_bulk_action_window(self):
+    def _show_tasks_window(self, task_type="active"):
         """Open a new window to manage active tasks."""
-        dialog, content = self.dialog_factory.create_dialog("Bulk Action", 500, 400)
 
-        # Fetch active tasks
-        active_tasks = self.task_controller.get_active_tasks()
+        # Fetch tasks based on task_type
+        dialog_title = "Active Tasks" if task_type == "active" else "Finished Tasks"
+        dialog, content = self.dialog_factory.create_dialog(dialog_title, 500, 400)
+        if task_type == "active":
+            tasks = self.task_controller.get_active_tasks()
+        else:
+            tasks = self.task_controller.get_finished_tasks()
 
-        if not active_tasks:
-            tk.Label(content, text="No active tasks available.", font=("Arial", 10), bg=COLORS["background"], fg=COLORS["text"]).pack(pady=20)
+        if not tasks:
+            tk.Label(content, text="No active tasks available.", font=("Courier", 10), bg=COLORS["background"], fg=COLORS["text"]).pack(pady=20)
             return
 
-        # Create a listbox for active tasks
-        task_listbox = tk.Listbox(content, selectmode=tk.MULTIPLE, bg=COLORS["background"], fg=COLORS["text"], font=("Arial", 10))
+        # Create a listbox for tasks
+        task_listbox = tk.Listbox(content, selectmode=tk.MULTIPLE, bg=COLORS["background"], fg=COLORS["text"], font=("Courier", 10))
         task_listbox.pack(fill="both", expand=True, padx=10, pady=5)
 
-        # Populate the listbox with active tasks
-        for task in active_tasks:
-            task_listbox.insert(tk.END, task)
+        # Bind double-click event to the listbox
+        task_listbox.bind("<Double-1>", lambda event: self._handle_task_listbox_double_click(event, task_listbox))
+
+        # Populate the listbox with tasks
+        for start_date, task_description in tasks:
+            ## format start_date to be MM/DD/YYYY HH:MM AM/PM
+            start_date = pd.to_datetime(start_date).strftime("%m/%d/%Y %I:%M %p")
+            task_listbox.insert(tk.END, f"[{start_date}] - {task_description}")
 
         def close_selected_tasks():
             selected_indices = task_listbox.curselection()
@@ -703,8 +734,9 @@ class MainView:
         )
         add_notes_button.pack(side="left", padx=5)
 
-        # Close All Selected Tasks button
-        close_button = tk.Button(
+        if task_type == "active":
+            # Close All Selected Tasks button
+            close_button = tk.Button(
             button_frame,
             text="Close All Selected Tasks",
             command=close_selected_tasks,
@@ -715,8 +747,8 @@ class MainView:
             borderwidth=2,
             padx=10,
             pady=5
-        )
-        close_button.pack(side="right", padx=5)
+            )
+            close_button.pack(side="right", padx=5)
     
     # Report methods
     def _preview_report(self):
@@ -733,20 +765,28 @@ class MainView:
         else:
             messagebox.showerror("Export Error", result)
     
-    def _show_task_notes(self, event):
-        """Display all notes for the double-clicked task."""
+    def _handle_task_listbox_double_click(self, event, listbox):
+        """Handle double-click on a task in the task listbox"""
         try:
-            index = self.history_text.index("@%s,%s linestart" % (event.x, event.y))
-            line_content = self.history_text.get(index, "%s lineend" % index)
-          ##  messagebox.showinfo("Task DescriptionBEFORE", f"Task: {line_content}") ##remove
-            task_description = line_content.rsplit("-", 1)[-1].strip()
-            ## messagebox.showinfo("Task DescriptionAFTER", f"Task: {task_description}") ##remove
+            # Get the selected index
+            selected_index = listbox.nearest(event.y)
+            if selected_index >= 0:
+                # Get the task text
+                task_text = listbox.get(selected_index)
+                # Extract just the task description part (after the timestamp)
+                task_description = task_text.split(" - ", 1)[1] if " - " in task_text else task_text
+                # Call the existing method to show notes
+                self._show_task_notes_from_description(task_description)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not show task notes: {str(e)}")
 
+    def _show_task_notes_from_description(self, task_description):
+        """Display notes for a task based on its description."""
+        try:
             notes = self.task_controller.get_task_notes(task_description)
+            dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 500, 300)
 
-            dialog, content = self.dialog_factory.create_dialog(f"Notes for {task_description}", 400, 300)
-
-            # Create the text widget
+            # Create the text widget with monospaced font
             notes_text = tk.Text(
                 content,
                 wrap="word",
