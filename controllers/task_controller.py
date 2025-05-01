@@ -1,5 +1,6 @@
 # controllers/task_controller.py
 
+import os
 import uuid
 from datetime import datetime
 from tkinter import ttk, messagebox, simpledialog
@@ -65,19 +66,25 @@ class TaskController:
         
         # Create a new task
         task_id = str(uuid.uuid4())
-        start_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        start_time = datetime.now()
+        start_time_str = start_time.strftime("%Y-%m-%d %H:%M")
         new_task = {
             "Task ID": task_id,
             "Task Description": task_description,
-            "Start Time": start_time,
+            "Start Time": start_time_str,
             "Stop Time": "",
             "Duration (min)": "",
             "Completed": "No",
             "Notes": notes or "",
             "Active": 1
+           
         }
         
         self.model.add_task(new_task)
+        
+        # Log the task start
+        self._append_to_log(f"▶️ {start_time_str}: - In Progress - {task_description}\n\n")
+        
         return True, f"Started task: {task_description}"
     
     def stop_task(self, task_description, notes=""):
@@ -108,6 +115,7 @@ class TaskController:
         # Get most recent active task
         idx = active_tasks.index[-1]
         stop_time = datetime.now()
+        stop_time_str = stop_time.strftime("%Y-%m-%d %H:%M")
         
         # Calculate duration
         try:
@@ -118,13 +126,17 @@ class TaskController:
         
         # Update task
         self.model.update_task(idx, {
-            "Stop Time": stop_time.strftime("%Y-%m-%d %H:%M"),
+            "Stop Time": stop_time_str,
             "Duration (min)": duration,
-            "Active": 0
+            "Active": 0,
+            "Updated": stop_time_str
         })
         
         if notes:
-            self.model.add_notes(idx, notes)
+            self.model.add_notes(idx, notes, stop_time)
+        
+        # Log the task stop
+        self._append_to_log(f"✅ {stop_time_str}: - Completed - {task_description} ({duration} min)\n\n")
             
         return True, f"Stopped task: {task_description} ({duration} min)", duration
     
@@ -162,18 +174,59 @@ class TaskController:
                 duration = round((stop_time - start_time).total_seconds() / 60, 2)
             except (ValueError, TypeError):
                 duration = 0
-                
+
             self.model.update_task(idx, {
                 "Stop Time": stop_time_str,
                 "Duration (min)": duration,
                 "Completed": "Yes",
-                "Active": 0
+                "Active": 0,
+                "Updated": stop_time_str
             })
             
             if notes:
-                self.model.add_notes(idx, notes)
+                self.model.add_notes(idx, notes, stop_time)
+                
+            # Log the task completion
+            self._append_to_log(f"✅ {stop_time_str}: - Completed - {task_description} ({duration} min)\n\n")
                 
         return True, f"Marked '{task_description}' as completed."
+    
+    def update_task_notes(self, task_description, note, timestamp=None):
+        """
+        Update notes for a task
+        
+        Args:
+            task_description: Description of the task to update
+            note: Notes to add
+            timestamp: Timestamp for the update
+            
+        Returns:
+            Boolean indicating success
+        """
+        try:
+            # Find the task by description
+            task_df = self.model.get_tasks(task_description=task_description)
+            
+            if task_df.empty:
+                return False
+            
+            # Update the first matching task (should be unique)
+            task_idx = task_df.index[0]
+            
+            current_time = timestamp or datetime.now()
+            current_time_str = current_time.strftime("%Y-%m-%d %H:%M")
+            
+            # Add note with timestamp
+            success = self.model.add_notes(task_idx, note, current_time)
+            
+            # Log the note update
+            if success:
+                self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
+            
+            return success
+        except Exception as e:
+            print(f"Error updating task notes: {e}")
+            return False
     
     def get_task_notes(self, task_description):
         """Fetch all notes for a given task description."""
@@ -183,3 +236,22 @@ class TaskController:
 
         notes = tasks["Notes"].dropna().tolist()
         return "\n".join(note.replace("|", "\n") for note in notes)
+    
+    def _append_to_log(self, entry):
+        """
+        Append an entry to the task history log file
+        
+        Args:
+            entry: Text entry to append
+        """
+        try:
+            log_file_path = os.path.join("exports", "task_history.log")
+            
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+            
+            # Append to the log file
+            with open(log_file_path, "a", encoding="utf-8") as log_file:
+                log_file.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {entry}")
+        except Exception as e:
+            print(f"Error appending to log: {e}")

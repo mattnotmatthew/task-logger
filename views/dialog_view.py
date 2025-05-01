@@ -97,30 +97,6 @@ class TaskDialogFactory:
         ).pack(anchor="w", pady=(0, 5))
         
         task_var = tk.StringVar()
-        
-        # # Task dropdown frame
-        # dropdown_frame = tk.Frame(content, bg=COLORS["background"])
-        # dropdown_frame.pack(fill="x", pady=5)
-        
-        # Handle empty task list by setting default empty string
-        ## Removing logic as part of Issue #20
-        # if inactive_tasks:
-        #     task_var.set(inactive_tasks[0])
-        #     task_menu = ttk.Combobox(
-        #         dropdown_frame, 
-        #         textvariable=task_var, 
-        #         values=inactive_tasks,
-        #         width=45
-        #     )
-        #     task_menu.pack(fill="x", padx=5)
-        # else:
-        #     task_var.set("")
-        #     task_menu = ttk.Combobox(
-        #         dropdown_frame, 
-        #         textvariable=task_var,
-        #         width=45
-        #     )
-        #     task_menu.pack(fill="x", padx=5)
               
         task_entry = tk.Entry(
             content, 
