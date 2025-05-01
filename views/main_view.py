@@ -394,16 +394,13 @@ class MainView:
         # Refresh the task history with filtered results
         self.refresh_history()
     
-    def refresh_history(self, notes_only=False):
+    def refresh_history(self):
         """
-        Refresh the task history display
-        
-        Args:
-            notes_only: If True, only display notes-related entries
+        Refresh the task history display with proper filtering for notes
         """
         self.history_text.config(state="normal")
         self.history_text.delete(1.0, tk.END)
-        
+
         try:
             # Get recent tasks
             task_model = self.task_controller.model
@@ -411,20 +408,21 @@ class MainView:
             
             # Apply current filter
             if self.current_filter == "active":
-                sorted_df = sorted_df[sorted_df["Active"] == 1]
+                filtered_df = sorted_df[sorted_df["Active"] == 1]
                 self.history_text.insert(tk.END, "Showing active tasks only\n\n", "active")
             elif self.current_filter == "finished":
-                sorted_df = sorted_df[sorted_df["Active"] == 0]
+                filtered_df = sorted_df[sorted_df["Active"] == 0]
                 self.history_text.insert(tk.END, "Showing finished tasks only\n\n", "completed")
             else:
+                filtered_df = sorted_df
                 # If showing all tasks, add a summary of active tasks
                 active_count = len(sorted_df[sorted_df["Active"] == 1])
                 if active_count > 0:
                     self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
-            
+
             # Format the timestamp safely
             def format_timestamp(ts):
-                if pd.notna(ts):
+                if pd.notna(ts) and ts:
                     try:
                         # If it's already a string, return it
                         if isinstance(ts, str):
@@ -434,116 +432,72 @@ class MainView:
                     except (AttributeError, ValueError):
                         return "Invalid timestamp"
                 return "No timestamp"
-            
+
             # Create a list of all entries for chronological sorting
             entries = []
-            
+
             # Process each task and create entries
-            for _, row in sorted_df.iterrows():
+            for _, row in filtered_df.iterrows():
                 desc = row["Task Description"]
                 start_time = row["Start Time"]
                 stop_time = row["Stop Time"]
-                updated = row["Updated"]
-                active = row["Active"] == 0
-                
+                updated = row["Updated"] if pd.notna(row["Updated"]) else None
+                active = row["Active"] == 1
+
                 # Parse timestamps to datetime objects for sorting
-                start_time_obj = None
-                stop_time_obj = None
-                updated_obj = None
-                
-                try:
-                    if isinstance(start_time, str):
-                        start_time_obj = datetime.strptime(start_time, "%Y-%m-%d %H:%M")
-                    else:
-                        start_time_obj = start_time
-                except (ValueError, TypeError):
-                    pass
-                    
-                try:
-                    if isinstance(stop_time, str):
-                        stop_time_obj = datetime.strptime(stop_time, "%Y-%m-%d %H:%M")
-                    else:
-                        stop_time_obj = stop_time
-                except (ValueError, TypeError):
-                    pass
-                    
-                try:
-                    if isinstance(updated, str):
-                        updated_obj = datetime.strptime(updated, "%Y-%m-%d %H:%M")
-                    else:
-                        updated_obj = updated
-                except (ValueError, TypeError):
-                    pass
-                
-                # If notes_only is True, only include note updates
-                if notes_only:
-                    if pd.notna(updated):
-                        entries.append({
-                            'timestamp': updated_obj,
-                            'timestamp_str': format_timestamp(updated),
-                            'icon': "ℹ️",
-                            'status': "Notes Added",
-                            'desc': desc,
-                            'tag': "notes_only"
-                        })
-                else:
-                    # Add task entries (both active and completed)
-                    if active:
-                        # Completed task
-                        entries.append({
-                            'timestamp': stop_time_obj,
-                            'timestamp_str': format_timestamp(stop_time),
-                            'icon': "⏹️",
-                            'status': "Completed",
-                            'desc': desc,
-                            'tag': "completed"
-                        })
-                    else:
-                        # Active task
-                        entries.append({
-                            'timestamp': start_time_obj,
-                            'timestamp_str': format_timestamp(start_time),
-                            'icon': "⏩",
-                            'status': "In Progress",
-                            'desc': desc,
-                            'tag': "active"
-                        })
-                    
-                    # Add note update entry if it exists
-                    if pd.notna(updated):
-                        entries.append({
-                            'timestamp': updated_obj,
-                            'timestamp_str': format_timestamp(updated),
-                            'icon': "ℹ️",
-                            'status': "Notes Updated",
-                            'desc': desc,
-                            'tag': "notes_only"
-                        })
-            
+                start_time_obj = pd.to_datetime(start_time, errors='coerce')
+                stop_time_obj = pd.to_datetime(stop_time, errors='coerce')
+                updated_obj = pd.to_datetime(updated, errors='coerce') if updated else None
+
+                # Add start entry only if we're showing all tasks or active tasks
+                if self.current_filter == "all" or self.current_filter == "active":
+                    entries.append({
+                        'timestamp': start_time_obj,
+                        'timestamp_str': format_timestamp(start_time),
+                        'icon': "⏩",
+                        'status': "In Progress",
+                        'desc': desc,
+                        'tag': "active"
+                    })
+
+                # Add completion entry if task is completed
+                if not active and pd.notna(stop_time):
+                    entries.append({
+                        'timestamp': stop_time_obj,
+                        'timestamp_str': format_timestamp(stop_time),
+                        'icon': "⏹️",
+                        'status': "Completed",
+                        'desc': desc,
+                        'tag': "completed"
+                    })
+
+                # Add note entry if it exists and we're showing all tasks
+                if self.current_filter == "all" and updated and (pd.isna(stop_time) or updated != stop_time):
+                    entries.append({
+                        'timestamp': updated_obj,
+                        'timestamp_str': format_timestamp(updated),
+                        'icon': "ℹ️",
+                        'status': "Notes Updated",
+                        'desc': desc,
+                        'tag': "note"
+                    })
+
             # Sort entries by timestamp (newest first)
-            # First handle entries with valid timestamp objects
-            entries_with_timestamp = [e for e in entries if e['timestamp'] is not None]
-            entries_without_timestamp = [e for e in entries if e['timestamp'] is None]
-            
-            # Sort entries with timestamps
-            sorted_entries = sorted(entries_with_timestamp, 
-                                key=lambda x: x['timestamp'], 
-                                reverse=True)
-            
-            # Append entries without timestamps at the end
-            sorted_entries.extend(entries_without_timestamp)
-            
+            # Handle NaT values safely
+            entries.sort(key=lambda x: (x['timestamp'] if x['timestamp'] is not pd.NaT and pd.notna(x['timestamp']) 
+                                    else pd.Timestamp.min), reverse=True)
+
             # Display all entries
-            for entry in sorted_entries:
-                display_text = f"{entry['icon']} {entry['timestamp_str']}: - {entry['status']} - {entry['desc']}\n"
+            for entry in entries:
+                display_text = f"{entry['icon']} {entry['timestamp_str']} - {entry['status']} - {entry['desc']}\n"
                 self.history_text.insert(tk.END, display_text, entry['tag'])
-                    
+
         except Exception as e:
             import traceback
             error_message = f"Error refreshing history: {str(e)}\n"
             self.history_text.insert(tk.END, error_message)
             self.history_text.insert(tk.END, traceback.format_exc())
-        
+
         self.history_text.config(state="disabled")
 
     def _create_initial_log(self, log_file_path, df, format_func):

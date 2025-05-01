@@ -221,12 +221,49 @@ class TaskController:
             
             # Log the note update
             if success:
-                self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
+                self._append_to_log(f"ℹ️{current_time_str}: - Notes Added - {task_description}\n")
             
             return success
         except Exception as e:
             print(f"Error updating task notes: {e}")
-            return False
+            return False   
+            
+    # def update_task_notes(self, task_description, note, timestamp=None):
+    #     """
+    #     Update notes for a task
+        
+    #     Args:
+    #         task_description: Description of the task to update
+    #         note: Notes to add
+    #         timestamp: Timestamp for the update
+            
+    #     Returns:
+    #         Boolean indicating success
+    #     """
+    #     try:
+    #         # Find the task by description
+    #         task_df = self.model.get_tasks(task_description=task_description)
+            
+    #         if task_df.empty:
+    #             return False
+            
+    #         # Update the first matching task (should be unique)
+    #         task_idx = task_df.index[0]
+            
+    #         current_time = timestamp or datetime.now()
+    #         current_time_str = current_time.strftime("%Y-%m-%d %H:%M")
+            
+    #         # Add note with timestamp
+    #         success = self.model.add_notes(task_idx, note, current_time)
+            
+    #         # Log the note update
+    #         if success:
+    #             self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
+            
+    #         return success
+    #     except Exception as e:
+    #         print(f"Error updating task notes: {e}")
+    #         return False
     
     def get_task_notes(self, task_description):
         """Fetch all notes for a given task description."""

@@ -4,7 +4,7 @@ import os
 
 # Application version
 
-VERSION = "1.11.0"
+VERSION = "1.12.0"
 
 # File and directory paths
 CSV_FILE = "task_log.csv"

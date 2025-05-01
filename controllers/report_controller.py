@@ -35,16 +35,26 @@ class ReportController:
         
         # Create a temporary DataFrame for processing
         temp_df = self.model.df.copy()
+        
+        # Ensure relevant columns are converted to datetime
         temp_df["Start Time"] = pd.to_datetime(temp_df["Start Time"], errors='coerce')
         temp_df["Stop Time"] = pd.to_datetime(temp_df["Stop Time"], errors='coerce')
+        temp_df["Updated"] = pd.to_datetime(temp_df["Updated"], errors='coerce')  # Ensure Updated is datetime
         
-        recent = temp_df[temp_df["Start Time"].between(start_date, end_date)]
-        recent = recent.sort_values(by="Start Time")
+        # Sort the DataFrame by Start Time
+        temp_df = temp_df.sort_values(by="Start Time")
         
         # Create completed and in-progress task dataframes
-        completed_tasks = recent[recent["Active"] == 0]
-        pending_tasks = recent[recent["Active"] != 0]
-        
+        completed_tasks = temp_df[temp_df["Active"] == 0]
+        pending_tasks = temp_df[temp_df["Active"] != 0]
+
+        # Filter completed tasks within the last week by Updated or Start Time
+        completed_tasks = completed_tasks[
+            completed_tasks.apply(
+                lambda row: row["Updated"] if pd.notna(row["Updated"]) else row["Start Time"], axis=1
+            ).between(start_date, end_date)
+        ]
+
         export_date = datetime.now().strftime("%Y-%m-%d")
         lines = ["📋 5-15\n"]
         lines.append(f"<strong>Name</strong>: [InsertName]<br><strong>Week Ending</strong>: {export_date}")
