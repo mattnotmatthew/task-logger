@@ -11,7 +11,7 @@ CSV_FILE = "task_log.csv"
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".task_logger")
 
 # Default settings
-DEFAULT_WINDOW_SIZE = "710x425"
+DEFAULT_WINDOW_SIZE = "775x425"
 
 # UI Colors
 COLORS = {
