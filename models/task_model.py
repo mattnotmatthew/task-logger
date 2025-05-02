@@ -48,8 +48,6 @@ class TaskModel:
                 print(f"Column '{col}' does not exist. Adding it.")
                 self.df[col] = ""  # Using empty string for all columns including Updated
                 columns_added = True  # Set flag when a column is added
-            else:
-                print(f"Column '{col}' already exists.")
         
         # After adding any missing columns, save the updated DataFrame
         if columns_added:
@@ -156,7 +154,8 @@ class TaskModel:
         try:
             # Update the notes
             current_notes = self.df.at[idx, "Notes"]
-            if current_notes and current_notes.strip():
+            if current_notes:
+                current_notes =  current_notes.strip()
                 self.df.at[idx, "Notes"] = f"{current_notes} | {notes}"
             else:
                 self.df.at[idx, "Notes"] = notes
