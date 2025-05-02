@@ -176,73 +176,7 @@ class TaskDialogFactory:
         
         # Focus the entry
         task_entry.focus_set()
-    
-    def create_finish_task_dialog(self, callback=None):
-        """
-        Create a dialog for finishing a task
-        
-        Args:
-            callback: Function to call after successful task completion
-        """
-        active_tasks_list = self.task_controller.get_active_tasks()
-        
-        if not active_tasks_list:
-            messagebox.showinfo("No Active Tasks", "There are no active tasks to finish.")
-            return
-        
-        # Create dialog
-        dialog, content = self.create_dialog("Finish Task", 380, 230)
-        
-        # Build form
-        tk.Label(
-            content, 
-            text="Choose task to complete:",
-            font=("Arial", 10, "bold"),
-            bg=COLORS["background"],
-            fg=COLORS["text"]
-        ).pack(anchor="w", pady=(0, 5))
-        
-        task_var = tk.StringVar()
-        
-        if active_tasks_list:
-            task_var.set(active_tasks_list[0])
-            task_menu = ttk.Combobox(
-                content, 
-                textvariable=task_var, 
-                values=active_tasks_list,
-                width=45
-            )
-        else:
-            task_var.set("")
-            task_menu = ttk.Combobox(
-                content, 
-                textvariable=task_var,
-                width=45
-            )
-        
-        task_menu.pack(fill="x", pady=5)
-        
-        tk.Label(
-            content, 
-            text="Optional Notes:",
-            font=("Arial", 10),
-            bg=COLORS["background"],
-            fg=COLORS["text"]
-        ).pack(anchor="w", pady=(10, 5))
-        
-        note_entry = tk.Entry(
-            content, 
-            width=45,
-            font=("Arial", 10),
-            bd=2,
-            relief=tk.GROOVE
-        )
-        note_entry.pack(fill="x", pady=5)
-        
-        # Button frame
-        button_frame = tk.Frame(content, bg=COLORS["background"])
-        button_frame.pack(fill="x", pady=(15, 0))
-        
+            
         def on_submit():
             """Handle task completion submission"""
             selected = task_var.get().strip()
@@ -257,35 +191,6 @@ class TaskDialogFactory:
                     callback()
             else:
                 messagebox.showwarning("Warning", message)
-        
-        # Create the buttons
-        cancel_button = tk.Button(
-            button_frame,
-            text="Cancel",
-            command=dialog.destroy,
-            bg=COLORS["secondary"],
-            fg=COLORS["text"],
-            font=("Arial", 10),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        cancel_button.pack(side="left", padx=5)
-        
-        complete_button = tk.Button(
-            button_frame,
-            text="Complete",
-            command=on_submit,
-            bg=COLORS["primary"],
-            fg=COLORS["background"],
-            font=("Arial", 10, "bold"),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=20,
-            pady=5
-        )
-        complete_button.pack(side="right", padx=5)
     
     def create_stop_task_dialog(self, callback=None):
         """

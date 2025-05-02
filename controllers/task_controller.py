@@ -89,58 +89,6 @@ class TaskController:
         
         return True, f"Started task: {task_description}"
     
-    def stop_task(self, task_description, notes=""):
-        """
-        Stop an active task
-        
-        Args:
-            task_description: Description of the task
-            notes: Optional notes to add
-            
-        Returns:
-            Tuple of (success, message, duration)
-        """
-        task_description = task_description.strip()
-        
-        if not task_description:
-            return False, "Please select a task", None
-        
-        # Find active task rows
-        active_tasks = self.model.get_tasks(
-            active=True, 
-            task_description=task_description
-        )
-        
-        if active_tasks.empty:
-            return False, "No active task found with that name", None
-        
-        # Get most recent active task
-        idx = active_tasks.index[-1]
-        stop_time = datetime.now()
-        stop_time_str = stop_time.strftime("%Y-%m-%d %H:%M")
-        
-        # Calculate duration
-        try:
-            start_time = datetime.strptime(self.model.get_value(idx, "Start Time"), "%Y-%m-%d %H:%M")
-            duration = round((stop_time - start_time).total_seconds() / 60, 2)
-        except (ValueError, TypeError):
-            duration = 0
-        
-        # Update task
-        self.model.update_task(idx, {
-            "Stop Time": stop_time_str,
-            "Duration (min)": duration,
-            "Active": 0,
-            "Updated": stop_time_str
-        })
-        
-        if notes:
-            self.model.add_notes(idx, notes, stop_time)
-        
-        # Log the task stop
-        self._append_to_log(f"✅ {stop_time_str}: - Completed - {task_description} ({duration} min)\n\n")
-            
-        return True, f"Stopped task: {task_description} ({duration} min)", duration
     
     def finish_task(self, task_description, notes=""):
         """
@@ -161,12 +109,9 @@ class TaskController:
         parsed_task_description = task_description.split("] - ", 1)[-1]
         # Find active tasks with this description
         mask = (self.model.df["Task Description"] == parsed_task_description) & (self.model.df["Active"] == 1)
-
-        print(f"task_description: {task_description}")
-        print(f"parsed_task_description: {parsed_task_description}")
         
         if not any(mask):
-            return False, f"No active task found with name: {task_description}"
+            return False, f"No active task found with name: {parsed_task_description}"
         
         stop_time = datetime.now()
         stop_time_str = stop_time.strftime("%Y-%m-%d %H:%M")
@@ -174,16 +119,8 @@ class TaskController:
         # Update all matching tasks
         indices = self.model.df[mask].index
         for idx in indices:
-            # Calculate duration
-            try:
-                start_time = datetime.strptime(self.model.get_value(idx, "Start Time"), "%Y-%m-%d %H:%M")
-                duration = round((stop_time - start_time).total_seconds() / 60, 2)
-            except (ValueError, TypeError):
-                duration = 0
-
             self.model.update_task(idx, {
                 "Stop Time": stop_time_str,
-                "Duration (min)": duration,
                 "Completed": "Yes",
                 "Active": 0,
                 "Updated": stop_time_str
@@ -193,9 +130,9 @@ class TaskController:
                 self.model.add_notes(idx, notes, stop_time)
                 
             # Log the task completion
-            self._append_to_log(f"✅ {stop_time_str}: - Completed - {task_description} ({duration} min)\n\n")
+            self._append_to_log(f"✅ {stop_time_str}: - Completed - {parsed_task_description}\n\n")
                 
-        return True, f"Marked '{task_description}' as completed."
+        return True, f"Marked '{parsed_task_description}' as completed."
         
     def update_task_notes(self, task_description, note, timestamp=None):
         """
@@ -246,43 +183,6 @@ class TaskController:
             traceback.print_exc()
             return False  
             
-    # def update_task_notes(self, task_description, note, timestamp=None):
-    #     """
-    #     Update notes for a task
-        
-    #     Args:
-    #         task_description: Description of the task to update
-    #         note: Notes to add
-    #         timestamp: Timestamp for the update
-            
-    #     Returns:
-    #         Boolean indicating success
-    #     """
-    #     try:
-    #         # Find the task by description
-    #         task_df = self.model.get_tasks(task_description=task_description)
-            
-    #         if task_df.empty:
-    #             return False
-            
-    #         # Update the first matching task (should be unique)
-    #         task_idx = task_df.index[0]
-            
-    #         current_time = timestamp or datetime.now()
-    #         current_time_str = current_time.strftime("%Y-%m-%d %H:%M")
-            
-    #         # Add note with timestamp
-    #         success = self.model.add_notes(task_idx, note, current_time)
-            
-    #         # Log the note update
-    #         if success:
-    #             self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
-            
-    #         return success
-    #     except Exception as e:
-    #         print(f"Error updating task notes: {e}")
-    #         return False
-    
     def get_task_notes(self, task_description):
         """Fetch all notes for a given task description."""
         tasks = self.model.get_tasks(task_description=task_description)

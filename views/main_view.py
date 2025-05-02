@@ -199,21 +199,6 @@ class MainView:
         )
         start_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 
-        finish_button = tk.Button(
-            button_frame, 
-            text="Finish Task", 
-            command=self._show_finish_task_dialog,
-            bg=COLORS["primary"],
-            fg=COLORS["background"], 
-            font=("Arial", 10, "bold"),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5,
-            width=min_width  # Set minimum width
-        )
-        finish_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
         show_active_tasks = tk.Button(
             button_frame, 
             text="View Active Tasks", 
@@ -227,7 +212,7 @@ class MainView:
             pady=5,
             width=min_width  # Set minimum width
         )
-        show_active_tasks.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+        show_active_tasks.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         
         show_inactive_tasks = tk.Button(
             button_frame, 
@@ -242,7 +227,23 @@ class MainView:
             pady=5,
             width=min_width  # Set minimum width
         )
-        show_inactive_tasks.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        show_inactive_tasks.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+
+        clear_exports_folder = tk.Button(
+            button_frame, 
+            text="Clear Exports Folder", 
+           ## command=self._show_finish_task_dialog,
+            bg=COLORS["secondary"],
+            fg=COLORS["background"], 
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5,
+            state="disabled",  # placeholder for future inclusion
+            width=min_width  # Set minimum width
+        )
+        clear_exports_folder.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
     
         # Preview button spanning all columns
         preview_button = tk.Button(
@@ -633,9 +634,6 @@ class MainView:
         """Show dialog to start a new task"""
         self.dialog_factory.create_start_task_dialog(self.refresh_history)
     
-    def _show_finish_task_dialog(self):
-        """Show dialog to finish a task"""
-        self.dialog_factory.create_finish_task_dialog(self.refresh_history)
 
     def _show_tasks_window(self, task_type="active"):
         """Open a new window to manage active tasks."""
