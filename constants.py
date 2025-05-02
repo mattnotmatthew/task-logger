@@ -20,7 +20,7 @@ COLORS = {
     "success": "#4caf50",      # Green
     "warning": "#ff9800",      # Orange
     "danger": "#f44336",       # Red
-    "critical_action": "FF0000", # Bright red
+    "critical_action": "#FF0000", # Bright red
     "text": "#333333",         # Dark gray
     "light_text": "#666666",   # Medium gray
     "background": "#ffffff",   # White
