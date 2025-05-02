@@ -9,7 +9,7 @@ class TaskDialogFactory:
     Factory class for creating consistent task dialogs
     """
     
-    def __init__(self, parent, task_controller):
+    def __init__(self, parent, task_controller,report_controller):
         """
         Initialize the dialog factory
         
@@ -19,6 +19,7 @@ class TaskDialogFactory:
         """
         self.parent = parent
         self.task_controller = task_controller
+        self.report_controller = report_controller
     
     def create_dialog(self, title, width=350, height=200):
         """
@@ -71,6 +72,92 @@ class TaskDialogFactory:
         content.pack(fill="both", expand=True)
         
         return dialog, content
+    
+    def create_regen_preview_report_dialog(self, callback=None):
+        """
+        Create a dialog for regenerating a preview report
+        
+        Args:
+            callback: Function to call after successful report generation
+        """
+
+        dialog, content = self.create_dialog("Regen Preview", 500, 400)
+        # Build form
+        tk.Label(
+            content, 
+            text="Select MD file to regen:",
+            font=("Arial", 10, "bold"),
+            bg=COLORS["background"],
+            fg=COLORS["text"]
+        ).pack(anchor="w", pady=(0, 5))
+
+        # Fetch tasks based on task_type
+        mds = self.report_controller.list_markdown_files()
+
+        if not mds:
+            tk.Label(content, text="No active tasks available.", font=("Courier", 10), bg=COLORS["background"], fg=COLORS["text"]).pack(pady=20)
+            return
+
+        # Create a listbox for tasks
+        mds_listbox = tk.Listbox(content, bg=COLORS["background"], fg=COLORS["text"], font=("Courier", 10))
+        mds_listbox.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Populate the listbox with markdown files
+        for md_file in mds:
+            mds_listbox.insert(tk.END, md_file)
+        
+        # Button frame
+        button_frame = tk.Frame(content, bg=COLORS["background"])
+        button_frame.pack(fill="x", pady=(15, 0))
+        
+        def on_submit():
+            selected = mds_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("No Selection", "Please select a MD file.")
+                return
+
+            selected_md = [mds_listbox.get(i) for i in selected]
+          
+            selected_md = selected_md[0].strip("[]'")
+            print(f"Selected MD: {selected_md}")
+            success, message = self.report_controller.preview_existing_markdown(selected_md)
+            
+            if success:
+                messagebox.showinfo("Success", message)
+                dialog.destroy()
+                if callback:
+                    callback()
+            else:
+                messagebox.showwarning("Warning", message)
+        
+        # Create the buttons
+        cancel_button = tk.Button(
+            button_frame,
+            text="Cancel",
+            command=dialog.destroy,
+            bg=COLORS["secondary"],
+            fg=COLORS["text"],
+            font=("Arial", 10),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        cancel_button.pack(side="left", padx=5)
+        
+        start_button = tk.Button(
+            button_frame,
+            text="Start",
+            command=on_submit,
+            bg=COLORS["success"],
+            fg=COLORS["background"],
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=20,
+            pady=5
+        )
+        start_button.pack(side="right", padx=5)
     
     def create_start_task_dialog(self, callback=None):
         """

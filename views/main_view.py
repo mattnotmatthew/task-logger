@@ -27,7 +27,7 @@ class MainView:
         self.root = root
         self.task_controller = task_controller
         self.report_controller = report_controller
-        self.dialog_factory = TaskDialogFactory(self.root, self.task_controller)
+        self.dialog_factory = TaskDialogFactory(self.root, self.task_controller, self.report_controller)
         
         # Initialize always on top state variable
         self.always_on_top_var = tk.BooleanVar(value=True)
@@ -111,7 +111,7 @@ class MainView:
         
         # Set minimum window size to ensure all elements are visible
         self.root.update_idletasks()
-        min_width = 700
+        min_width = 775
         min_height = 550  # Reduced minimum height
         self.root.minsize(min_width, min_height)
 
@@ -182,7 +182,7 @@ class MainView:
             button_frame.grid_columnconfigure(i, weight=1)
         
         # Task action buttons with minimum width
-        min_width = 12  # Set a minimum width for buttons
+        min_width = 15  # Set a minimum width for buttons
         
         start_button = tk.Button(
             button_frame, 
@@ -258,7 +258,22 @@ class MainView:
             padx=10,
             pady=5
         )
-        preview_button.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky="ew")  # Note the columnspan=4
+        preview_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")  # Note the columnspan=4
+
+        # Preview button spanning all columns
+        regenerate_preview = tk.Button(
+            button_frame,
+            text="Regenerate Preview",
+            command=self._show_regen_preview_report,
+            bg=COLORS["success"],
+            fg=COLORS["background"],
+            font=("Arial", 10,"bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5
+        )
+        regenerate_preview.grid(row=1, column=1, padx=5, pady=5, sticky="ew")  # Note the columnspan=4
     
     def _create_history_section(self, parent):
         """Create the task history section"""
@@ -630,6 +645,11 @@ class MainView:
 
     
     # Dialog methods
+
+    def _show_regen_preview_report (self):
+        self.dialog_factory.create_regen_preview_report_dialog()
+
+
     def _show_start_task_dialog(self):
         """Show dialog to start a new task"""
         self.dialog_factory.create_start_task_dialog(self.refresh_history)
@@ -764,7 +784,13 @@ class MainView:
         success, message = self.report_controller.preview_markdown()
         if not success:
             messagebox.showerror("Preview Error", message)
-    
+
+    def _regen_preview_report (self):
+        """Preview markdown report in browser"""
+        success, message = self.report_controller.preview_existing_markdown()
+        if not success:
+            messagebox.showerror("Preview Error", message)
+
     def _export_to_markdown(self):
         """Export tasks to markdown file"""
         success, result = self.report_controller.export_to_markdown()

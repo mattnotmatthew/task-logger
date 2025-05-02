@@ -124,6 +124,7 @@ class ReportController:
         """
         try:
             md_content = self.generate_markdown_content()
+            self.export_to_markdown()
             
             # Convert to HTML
             html = markdown.markdown(md_content)
@@ -179,3 +180,81 @@ class ReportController:
             return True, output_path
         except Exception as e:
             return False, f"Error exporting to markdown: {str(e)}"
+
+
+    def list_markdown_files(self):
+        """
+        List all markdown files in the exports folder
+        
+        Returns:
+            List of markdown filenames in the exports folder
+        """
+        try:
+            # Get all files in the exports directory
+            files = os.listdir("exports")
+            print(f"Files in exports directory: {files}")
+            # Filter for markdown files only
+            md_files = [f for f in files if f.endswith('.md')]
+            print(f"Markdown files found: {md_files}")
+            return md_files
+        except Exception as e:
+            print(f"Error listing markdown files: {str(e)}")
+            return []
+
+    def preview_existing_markdown(self, filename):
+        """
+        Preview an existing markdown file in browser
+        
+        Args:
+            filename: Name of the markdown file in exports folder
+        
+        Returns:
+            Tuple of (success, message or error)
+        """
+        try:
+            # Ensure the filename is just the basename, not a path
+            basename = os.path.basename(filename)
+            file_path = os.path.join("exports", basename)
+            
+            # Check if file exists
+            if not os.path.isfile(file_path):
+                return False, f"File not found: {file_path}"
+            
+            # Read markdown content
+            with open(file_path, "r", encoding="utf-8") as f:
+                md_content = f.read()
+            
+            # Convert to HTML
+            html = markdown.markdown(md_content)
+        
+            # Save as temp HTML file
+            temp_html = f"exports/temp_preview_{datetime.now().strftime('%Y%m%d%H%M%S')}.html"
+            absolute_path = os.path.abspath(temp_html)
+            file_url = f"file://{absolute_path}"
+
+            with open(temp_html, "w", encoding="utf-8") as f:
+                f.write(f"""
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; color: #000; }}
+                        h1 {{ color: #2c3e50; border-bottom: 2px solid #4287f5; padding-bottom: 10px; }}
+                        h2 {{ color: #34495e; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }}
+                        h3 {{ color: #3498db; margin-top: 20px; margin-bottom: 10px; }}
+                        ul {{ padding-left: 20px; margin-bottom: 0px  !important; }}
+                        li {{ margin-bottom: 0px  !important; }}
+                        .timestamp {{ color: #777; font-style: italic; }}
+                        .note {{ background-color: #f8f9fa; padding: 5px 10px; border-left: 3px solid #4287f5; margin-top: 5px; }}
+                    </style>
+                </head>
+                <body>
+                    {html}
+                </body>
+                </html>
+                """)
+            
+            # Open in default browser
+            webbrowser.open(file_url)
+            return True, f"Preview opened in browser: {temp_html}"
+        except Exception as e:
+            return False, f"Error generating preview: {str(e)}"
