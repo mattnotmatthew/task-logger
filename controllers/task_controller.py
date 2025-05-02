@@ -158,8 +158,12 @@ class TaskController:
         if not task_description:
             return False, "Please select a task"
             
+        parsed_task_description = task_description.split("] - ", 1)[-1]
         # Find active tasks with this description
-        mask = (self.model.df["Task Description"] == task_description) & (self.model.df["Active"] == 1)
+        mask = (self.model.df["Task Description"] == parsed_task_description) & (self.model.df["Active"] == 1)
+
+        print(f"task_description: {task_description}")
+        print(f"parsed_task_description: {parsed_task_description}")
         
         if not any(mask):
             return False, f"No active task found with name: {task_description}"
