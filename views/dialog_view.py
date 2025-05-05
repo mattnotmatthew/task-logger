@@ -264,20 +264,20 @@ class TaskDialogFactory:
         # Focus the entry
         task_entry.focus_set()
             
-        def on_submit():
-            """Handle task completion submission"""
-            selected = task_var.get().strip()
-            note = note_entry.get().strip()
+        # def on_submit():
+        #     """Handle task completion submission"""
+        #     selected = task_var.get().strip()
+        #     note = note_entry.get().strip()
             
-            success, message = self.task_controller.finish_task(selected, note)
+        #     success, message = self.task_controller.finish_task(selected, note)
             
-            if success:
-                messagebox.showinfo("Finished", message)
-                dialog.destroy()
-                if callback:
-                    callback()
-            else:
-                messagebox.showwarning("Warning", message)
+        #     if success:
+        #         messagebox.showinfo("Finished", message)
+        #         dialog.destroy()
+        #         if callback:
+        #             callback()
+        #     else:
+        #         messagebox.showwarning("Warning", message)
     
     def create_stop_task_dialog(self, callback=None):
         """
