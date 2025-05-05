@@ -695,7 +695,7 @@ class MainView:
                 self.task_controller.finish_task(task, note or "")
 
             messagebox.showinfo("Success", "Selected tasks have been closed.")
-            dialog.destroy()
+            # dialog.destroy()
             self.refresh_history()
 
         def add_notes_to_selected_tasks():
@@ -724,7 +724,7 @@ class MainView:
                             print(f"Adding note to task: {task_description} at index {idx}")
 
             messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
-            dialog.destroy()
+            # dialog.destroy()
             # Remove notes_only=True to show the full history
             self.refresh_history()
 

@@ -222,7 +222,7 @@ class TaskDialogFactory:
             
             if success:
                 messagebox.showinfo("Success", message)
-                dialog.destroy()
+                # dialog.destroy()
                 if callback:
                     callback()
             else:
