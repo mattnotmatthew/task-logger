@@ -5,10 +5,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import pandas as pd
+import uuid
+
 
 # Import from other modules
 from constants import VERSION, COLORS
 from views.dialog_view import TaskDialogFactory
+
 
 class MainView:
     """
@@ -48,7 +51,7 @@ class MainView:
         self.setup_logging()
         
         # Refresh history on load
-        self.refresh_history()
+        self.refresh_history(True)
         
 
     def configure_styles(self):
@@ -123,21 +126,49 @@ class MainView:
         df = self.task_controller.model.get_tasks()  # Fetch all tasks from the model
 
         # Define a formatting function for timestamps
-        format_func = lambda ts: ts.strftime("%Y-%m-%d %H:%M") if pd.notna(ts) else "No timestamp"
+        format_func = lambda ts: pd.to_datetime(ts).strftime("%Y-%m-%d %H:%M") if pd.notna(ts) else "No timestamp"
 
-        # Call _create_initial_log with the fetched DataFrame
-        self._create_initial_log(log_file_path, df, format_func)   
+        # # Create the log file if it doesn't exist
+        # if not os.path.exists(log_file_path):
+        #     with open(log_file_path, "w", encoding="utf-8") as log_file:
+        #         log_file.write(f"# Task Logger History - Created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        #         log_file.write("## Task History\n")
+
+        # Create or update the log file with proper formatting
+        self._create_initial_log(log_file_path, df, format_func)
+
+    def log_exports_clear(self):
+        """Create a log entry for clearing exports folder"""
+        task_id = str(uuid.uuid4())
+        start_time = datetime.now()
+        start_time_str = start_time.strftime("%Y-%m-%d %H:%M")
+        
+        # Add to task database
+        new_task = {
+            "Task ID": task_id,
+            "Task Description": "Clear exports folder",
+            "Start Time": start_time_str,
+            "Stop Time": start_time_str,
+            "Duration (min)": "",
+            "Completed": "Yes",
+            "Notes": "HTML files cleared from exports folder",
+            "Active": 0,
+            "Updated": start_time_str
+        }
+        self.task_controller.model.add_task(new_task)
+        
+        # Log to history with consistent format
+        log_entry = f"❌ {start_time_str}: - Clear Export Dir - Clear exports folder\n"
+        self.task_controller._append_to_log(log_entry)
+        
 
     def _create_header_frame(self):
         """Create the header frame with title and controls"""
         header_frame = tk.Frame(self.root, bg=COLORS["primary"], padx=10, pady=10)
-        header_frame.grid(row=0, column=0, sticky="ew")  # Stick to east-west
-        
-        # App title
         title_label = tk.Label(
-            header_frame, 
-            text="Task Logger", 
-            font=("Arial", 18, "bold"), 
+            header_frame,
+            text="Task Logger",
+            font=("Arial", 18, "bold"),
             fg=COLORS["background"],
             bg=COLORS["primary"]
         )
@@ -229,21 +260,6 @@ class MainView:
         )
         show_inactive_tasks.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
 
-        clear_exports_folder = tk.Button(
-            button_frame, 
-            text="Clear Exports Folder", 
-           ## command=self._show_finish_task_dialog,
-            bg=COLORS["secondary"],
-            fg=COLORS["background"], 
-            font=("Arial", 10, "bold"),
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5,
-            state="disabled",  # placeholder for future inclusion
-            width=min_width  # Set minimum width
-        )
-        clear_exports_folder.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
     
         # Preview button spanning all columns
         preview_button = tk.Button(
@@ -274,6 +290,23 @@ class MainView:
             pady=5
         )
         regenerate_preview.grid(row=1, column=1, padx=5, pady=5, sticky="ew")  # Note the columnspan=4
+
+        
+        clear_exports_folder = tk.Button(
+            button_frame, 
+            text="Clear Exports Folder", 
+            command=self._clear_exports_folder,
+            bg=COLORS["critical_action"],
+            fg=COLORS["background"], 
+            font=("Arial", 10, "bold"),
+            relief=tk.RAISED,
+            borderwidth=2,
+            padx=10,
+            pady=5,
+
+            width=min_width  # Set minimum width
+        )
+        clear_exports_folder.grid(row=1, column=2, padx=5, pady=5, sticky="ew")
     
     def _create_history_section(self, parent):
         """Create the task history section"""
@@ -287,6 +320,8 @@ class MainView:
             pady=10
         )
         history_frame.pack(fill="both", expand=True)
+
+        
 
         # Add scrollbar to history text
         scrollbar = tk.Scrollbar(history_frame)
@@ -365,6 +400,7 @@ class MainView:
         self.history_text.tag_configure("timestamp", foreground=COLORS["light_text"], font=(history_font[0], history_font[1], "italic"))
         self.history_text.tag_configure("note", foreground=COLORS["light_text"])
         self.history_text.tag_configure("notes_only", foreground=COLORS["sidebar"])
+        self.history_text.tag_configure("export", foreground=COLORS["critical_action"])  # Use critical action color for export entries
 
        
     def _create_status_bar(self):
@@ -430,106 +466,125 @@ class MainView:
         # Refresh the task history with filtered results
         self.refresh_history()
     
-    def refresh_history(self):
-        """
-        Refresh the task history display with proper filtering for notes
-        """
+    def refresh_history(self, clear_exports=False):
+        """Refresh the task history display directly from the log file."""
         self.history_text.config(state="normal")
         self.history_text.delete(1.0, tk.END)
 
         try:
-            # Get recent tasks
-            task_model = self.task_controller.model
-            sorted_df = task_model.get_recent_tasks(days=7, limit=25)
+            log_file_path = "exports/task_history.log"
+            if not os.path.exists(log_file_path):
+                self.history_text.insert(tk.END, "No task history available.\n")
+                self.history_text.config(state="disabled")
+                return
+
+            entries = []
+            with open(log_file_path, "r", encoding="utf-8") as log_file:
+                for line in log_file:
+                    if not line.strip() or line.startswith("#"):  # Skip empty lines and headers
+                        continue
+                    
+                    # Parse the log entry
+                    try:
+                        # Format is: emoji timestamp: - status - description
+                        if ":" not in line or " - " not in line:
+                            continue
+
+                        # Split on the colon first to separate emoji+timestamp from the rest
+                        timestamp_part, rest = line.split(" - ", 1)
+                        # Explicitly strip leading/trailing whitespace from timestamp_part
+                        timestamp_part = timestamp_part.strip()
+                        timestamp_str = timestamp_part[1:].strip()  # Extract timestamp after the emoji
+                    
+                        
+                        if " - " not in rest:
+                            continue
+                            
+                       # Split the rest into status and description
+                        parts = rest.strip().split(" - ",1)
+
+                            
+                        status = parts[0].strip()
+                        desc = parts[1].strip()
+                       
+
+                        # Extract emoji and timestamp
+                        emoji = timestamp_part[0]  # First character should be emoji
+                        
+                        
+                        # Determine the entry type and tag based on status
+                        tag = "completed"
+                        if "In Progress" in status:
+                            tag = "active" 
+                        elif "Notes" in status:
+                            tag = "note"                            
+                        elif "Clear Export Dir" in status:
+                            tag = "export"
+                            
+                        print(f"Tag: {tag}")
+                        # Parse the timestamp
+                        try:
+                            # print(f"Timestamp string: {timestamp_str}")
+                            timestamp = pd.to_datetime(timestamp_str.strip())
+                            # print(f"Parsed timestamp: {timestamp}")
+                            # print(f"text: {line.strip()}")
+                            # print (f"tag: {tag}")
+                            # print (f"status: {status}") 
+                            # print (f"desc: {desc}")
+
+                            entries.append({
+                                'timestamp': timestamp,
+                                'text': line.strip(),
+                                'tag': tag,
+                                'status': status,
+                                'desc': desc
+                            })
+                            
+                        except Exception as e:
+                            print(f"Inner parsing timestamp: {e}")
+                            continue
+                    
+                    except Exception as e:
+                        print(f"Error parsing log line: {e}")
+                        continue
+
+            # Sort entries by timestamp (newest first)
+            entries.sort(key=lambda x: x['timestamp'], reverse=True)
+           
+
+            # Filter entries based on current filter
+            filtered_entries = []
             
-            # Apply current filter
             if self.current_filter == "active":
-                filtered_df = sorted_df[sorted_df["Active"] == 1]
-                active_count = len(filtered_df)
+                # For active filter, only show tasks that are In Progress and haven't been completed
+                for entry in entries:
+                    if entry['status'] == "In Progress":
+                        filtered_entries.append(entry)
+            elif self.current_filter == "all":
+                # For "all" 
+                for entry in entries:
+                    filtered_entries.append(entry)
+            else:
+                for entry in entries:
+                    if self.current_filter == "finished" and entry['tag'] not in ["active", "export","note"]:
+                        filtered_entries.append(entry)
+                    
+
+            # Display count header
+            if self.current_filter == "active":
+                active_count = len(filtered_entries)
                 self.history_text.insert(tk.END, f"You have {active_count} active task(s)\n\n", "active")
             elif self.current_filter == "finished":
-                filtered_df = sorted_df[sorted_df["Active"] == 0]
-                # If showing finished tasks, add a summary of completed tasks
-                completed_count = len(filtered_df)
+                completed_count = len(filtered_entries)
                 self.history_text.insert(tk.END, f"You have {completed_count} finished task(s)\n\n", "completed")
             else:
-                filtered_df = sorted_df
-                # If showing all tasks, add a summary of active tasks
-                all_count = len(filtered_df)
+                all_count = len(filtered_entries)
                 if all_count > 0:
                     self.history_text.insert(tk.END, f"You have {all_count} total task(s)\n\n", "active")
 
-            # Format the timestamp safely
-            def format_timestamp(ts):
-                if pd.notna(ts) and ts:
-                    try:
-                        # If it's already a string, return it
-                        if isinstance(ts, str):
-                            return ts
-                        # If it's a datetime, format it
-                        return ts.strftime("%Y-%m-%d %H:%M")
-                    except (AttributeError, ValueError):
-                        return "Invalid timestamp"
-                return "No timestamp"
-
-            # Create a list of all entries for chronological sorting
-            entries = []
-
-            # Process each task and create entries
-            for _, row in filtered_df.iterrows():
-                desc = row["Task Description"]
-                start_time = row["Start Time"]
-                stop_time = row["Stop Time"]
-                updated = row["Updated"] if pd.notna(row["Updated"]) else None
-                active = row["Active"] == 1
-
-                # Parse timestamps to datetime objects for sorting
-                start_time_obj = pd.to_datetime(start_time, errors='coerce')
-                stop_time_obj = pd.to_datetime(stop_time, errors='coerce')
-                updated_obj = pd.to_datetime(updated, errors='coerce') if updated else None
-
-                # Add start entry only if we're showing all tasks or active tasks
-                if self.current_filter == "all" or self.current_filter == "active":
-                    entries.append({
-                        'timestamp': start_time_obj,
-                        'timestamp_str': format_timestamp(start_time),
-                        'icon': "⏩",
-                        'status': "In Progress",
-                        'desc': desc,
-                        'tag': "active"
-                    })
-
-                # Add completion entry if task is completed
-                if not active and pd.notna(stop_time):
-                    entries.append({
-                        'timestamp': stop_time_obj,
-                        'timestamp_str': format_timestamp(stop_time),
-                        'icon': "⏹️",
-                        'status': "Completed",
-                        'desc': desc,
-                        'tag': "completed"
-                    })
-
-                # Add note entry if it exists and we're showing all tasks
-                if self.current_filter == "all" and updated and (pd.isna(stop_time) or updated != stop_time):
-                    entries.append({
-                        'timestamp': updated_obj,
-                        'timestamp_str': format_timestamp(updated),
-                        'icon': "ℹ️",
-                        'status': "Notes Updated",
-                        'desc': desc,
-                        'tag': "note"
-                    })
-
-            # Sort entries by timestamp (newest first)
-            # Handle NaT values safely
-            entries.sort(key=lambda x: (x['timestamp'] if x['timestamp'] is not pd.NaT and pd.notna(x['timestamp']) 
-                                    else pd.Timestamp.min), reverse=True)
-
-            # Display all entries
-            for entry in entries:
-                display_text = f"{entry['icon']} {entry['timestamp_str']} - {entry['status']} - {entry['desc']}\n"
-                self.history_text.insert(tk.END, display_text, entry['tag'])
+            # Display filtered entries
+            for entry in filtered_entries:
+                self.history_text.insert(tk.END, entry['text'] + "\n", entry['tag'])
 
         except Exception as e:
             import traceback
@@ -540,9 +595,7 @@ class MainView:
         self.history_text.config(state="disabled")
 
     def _create_initial_log(self, log_file_path, df, format_func):
-        """
-        Create the initial log file from existing data if it does not already exist.
-        """
+        """Create the initial log file from existing data if it does not already exist."""
         try:
             # Check if the log file already exists
             if os.path.exists(log_file_path):
@@ -557,6 +610,7 @@ class MainView:
             # Create the log file
             with open(log_file_path, "w", encoding="utf-8") as log_file:
                 log_file.write(f"# Task Logger History - Created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                log_file.write("## Task History\n\n")
                 
                 # Create a new DataFrame for all events to sort chronologically
                 events = []
@@ -564,63 +618,74 @@ class MainView:
                 # Process active tasks (start times)
                 active_tasks = df[df["Active"] == 1].copy()
                 for _, row in active_tasks.iterrows():
-                    events.append({
-                        "timestamp": row["Start Time"],
-                        "desc": row["Task Description"],
-                        "event_type": "start",
-                        "formatted_time": format_func(row["Start Time"]),
-                        "emoji": "▶️",
-                        "status": "In Progress"
-                    })
-                
-                # Process completed tasks
-                completed_tasks = df[df["Active"] == 0].copy()
-                for _, row in completed_tasks.iterrows():
-                    # Add start event for completed tasks
-                    if pd.notna(row["Start Time"]):
+                    if row["Task Description"] != "Clear exports folder":  # Skip clear exports entries here
                         events.append({
                             "timestamp": row["Start Time"],
                             "desc": row["Task Description"],
                             "event_type": "start",
                             "formatted_time": format_func(row["Start Time"]),
-                            "emoji": "▶️",
-                            "status": "Started"
+                            "emoji": "➕",
+                            "status": "In Progress"
                         })
-                    
-                    # Add completion event
-                    if pd.notna(row["Stop Time"]):
+                
+                # Process completed tasks
+                completed_tasks = df[df["Active"] == 0].copy()
+                for _, row in completed_tasks.iterrows():
+                    if row["Task Description"] == "Clear exports folder":
+                        # Handle clear exports entries
                         events.append({
-                            "timestamp": row["Stop Time"],
-                            "desc": row["Task Description"],
-                            "event_type": "stop",
-                            "formatted_time": format_func(row["Stop Time"]),
-                            "emoji": "✅",
-                            "status": "Completed"
+                            "timestamp": row["Start Time"],
+                            "desc": "Clear exports folder",
+                            "event_type": "export",
+                            "formatted_time": format_func(row["Start Time"]),
+                            "emoji": "❌",
+                            "status": "Clear Export Dir"
                         })
+                    else:
+                        # # Add regular completed task events
+                        # if pd.notna(row["Start Time"]):
+                        #     events.append({
+                        #         "timestamp": row["Start Time"],
+                        #         "desc": row["Task Description"],
+                        #         "event_type": "start",
+                        #         "formatted_time": format_func(row["Start Time"]),
+                        #         "emoji": "▶️",
+                        #         "status": "Started"
+                        #     })
+                        
+                        if pd.notna(row["Stop Time"]):
+                            events.append({
+                                "timestamp": row["Stop Time"],
+                                "desc": row["Task Description"],
+                                "event_type": "stop",
+                                "formatted_time": format_func(row["Stop Time"]),
+                                "emoji": "✅",
+                                "status": "Completed"
+                            })
                 
                 # Process note updates
                 note_updates = df[pd.notna(df["Updated"])].copy()
                 for _, row in note_updates.iterrows():
-                    events.append({
-                        "timestamp": row["Updated"],
-                        "desc": row["Task Description"],
-                        "event_type": "update",
-                        "formatted_time": format_func(row["Updated"]),
-                        "emoji": "ℹ️",
-                        "status": "Notes Updated"
-                    })
+                    if row["Task Description"] != "Clear exports folder":  # Skip clear exports entries here
+                        events.append({
+                            "timestamp": row["Updated"],
+                            "desc": row["Task Description"],
+                            "event_type": "update",
+                            "formatted_time": format_func(row["Updated"]),
+                            "emoji": "⏫",
+                            "status": "Notes Updated"
+                        })
                 
                 # Convert to DataFrame and sort chronologically (newest first)
                 events_df = pd.DataFrame(events)
                 if not events_df.empty:
                     events_df = events_df.sort_values(by="timestamp", ascending=False)
                     
-                    # Write all events in chronological order
-                    log_file.write("## Task History\n\n")
+                    # Write all events in chronological order with single newlines
                     for _, event in events_df.iterrows():
-                        log_file.write(f"{event['emoji']} {event['formatted_time']}: - {event['status']} - {event['desc']}\n\n")
+                        log_file.write(f"{event['emoji']} {event['formatted_time']} - {event['status']} - {event['desc']}\n")
                 else:
-                    log_file.write("## No Task History\n\nNo tasks have been recorded yet.\n\n")
+                    log_file.write("No tasks have been recorded yet.\n")
                     
         except Exception as e:
             print(f"Error creating initial log file: {e}")
@@ -654,6 +719,33 @@ class MainView:
         """Show dialog to start a new task"""
         self.dialog_factory.create_start_task_dialog(self.refresh_history)
     
+    # def function that clears out the exports folder of HTML files
+    def _clear_exports_folder(self):
+        """Clear the exports folder of HTML files and log the action."""
+        exports_folder = "exports"
+        if os.path.exists(exports_folder):
+            cleared_files = False
+            for filename in os.listdir(exports_folder):
+                if filename.endswith(".html"):
+                    file_path = os.path.join(exports_folder, filename)
+                    try:
+                        os.remove(file_path)
+                        cleared_files = True
+                        print(f"Deleted {file_path}")
+                    except Exception as e:
+                        print(f"Error deleting {file_path}: {e}")
+            
+            if cleared_files:
+                # Log the action of clearing the exports folder
+                self.log_exports_clear()
+                messagebox.showinfo("Success", "Exports folder cleared.")
+            else:
+                messagebox.showinfo("Info", "No HTML files found to clear in the exports folder.")
+        else:
+            messagebox.showwarning("Warning", "Exports folder does not exist.")
+        
+        # Refresh the history to include the log entry
+        self.refresh_history(True)
 
     def _show_tasks_window(self, task_type="active"):
         """Open a new window to manage active tasks."""
@@ -693,8 +785,7 @@ class MainView:
             for task in selected_tasks:
                 note = simpledialog.askstring("Closing Note", f"Add a note for task: {task}")
                 self.task_controller.finish_task(task, note or "")
-
-            messagebox.showinfo("Success", "Selected tasks have been closed.")
+                messagebox.showinfo("Success", "Selected tasks have been closed.")
             # dialog.destroy()
             self.refresh_history()
 
@@ -708,7 +799,7 @@ class MainView:
             for task_full in selected_tasks:
                 # Extract just the task description (after the timestamp)
                 task_description = task_full.split(" - ", 1)[1] if " - " in task_full else task_full
-                
+
                 note = simpledialog.askstring("Add Note", f"Enter a note for task: {task_description}")
                 if note:
                     # Get tasks matching just the description part
@@ -722,8 +813,7 @@ class MainView:
                             
                             # Add debug output to verify the task is being processed
                             print(f"Adding note to task: {task_description} at index {idx}")
-
-            messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
+                            messagebox.showinfo("Success", "Notes have been added to the selected tasks.")
             # dialog.destroy()
             # Remove notes_only=True to show the full history
             self.refresh_history()
