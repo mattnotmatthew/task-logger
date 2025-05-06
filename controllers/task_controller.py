@@ -79,16 +79,14 @@ class TaskController:
             "Completed": "No",
             "Notes": notes or "",
             "Active": 1
-           
         }
         
         self.model.add_task(new_task)
         
-        # Log the task start
-        self._append_to_log(f"▶️ {start_time_str}: - In Progress - {task_description}\n\n")
+        # Log the task start with consistent format
+        self._append_to_log(f"➕ {start_time_str} - In Progress - {task_description}\n")
         
         return True, f"Started task: {task_description}"
-    
     
     def finish_task(self, task_description, notes=""):
         """
@@ -129,8 +127,8 @@ class TaskController:
             if notes:
                 self.model.add_notes(idx, notes, stop_time)
                 
-            # Log the task completion
-            self._append_to_log(f"✅ {stop_time_str}: - Completed - {parsed_task_description}\n\n")
+            # Log the task completion with consistent format
+            self._append_to_log(f"✅ {stop_time_str} - Completed - {parsed_task_description}\n")
                 
         return True, f"Marked '{parsed_task_description}' as completed."
         
@@ -169,10 +167,10 @@ class TaskController:
             # Add note with timestamp
             success = self.model.add_notes(task_idx, note, current_time)
             
-            # Log the note update
+            # Log the note update with consistent format
             if success:
                 print("Note added successfully")
-                self._append_to_log(f"ℹ️ {current_time_str}: - Notes Added - {task_description}\n\n")
+                self._append_to_log(f"⏫ {current_time_str} - Notes Updated - {task_description}\n")
             else:
                 print("Failed to add note")
             
@@ -205,8 +203,8 @@ class TaskController:
             # Create directory if it doesn't exist
             os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
             
-            # Append to the log file
+            # Append to the log file - ensure single newline
             with open(log_file_path, "a", encoding="utf-8") as log_file:
-                log_file.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {entry}")
+                log_file.write(entry)
         except Exception as e:
             print(f"Error appending to log: {e}")
